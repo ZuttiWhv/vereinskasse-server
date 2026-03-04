@@ -1,4 +1,43 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import org.springframework.web.bind.annotation.*;
+import de.tozwhv.vereinskasse.server.service.AuthService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+
+
+@RestController
+@RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
+        return ResponseEntity.ok(authService.login(request.getUsername(), request.getPassword()));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request.getRefreshToken()));
+    }
+
+    @Data
+    public static class AuthRequest {
+        private String username;
+        private String password;
+    }
+
+    @Data
+    public static class RefreshRequest {
+        private String refreshToken;
+    }
+
+    @Data
+    public static class AuthResponse {
+        private final String accessToken;
+        private final String refreshToken;
+    }
 }

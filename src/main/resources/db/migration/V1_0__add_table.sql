@@ -30,22 +30,6 @@ CREATE TABLE user_roles (
                                     ON DELETE CASCADE
 );
 
--- ================================
--- Join Table: user_permission_groups
--- ================================
-CREATE TABLE user_permission_groups (
-                                        user_id BIGINT NOT NULL,
-                                        permission_group_id BIGINT NOT NULL,
-                                        PRIMARY KEY (user_id, permission_group_id),
-                                        CONSTRAINT fk_user_pg
-                                            FOREIGN KEY (user_id)
-                                                REFERENCES users(id)
-                                                ON DELETE CASCADE,
-                                        CONSTRAINT fk_pg
-                                            FOREIGN KEY (permission_group_id)
-                                                REFERENCES permission_group(id)
-                                                ON DELETE CASCADE
-);
 
 -- ================================
 -- Permission Table
@@ -64,13 +48,31 @@ CREATE TABLE permission_group (
 );
 
 -- ================================
+-- Join Table: user_permission_groups
+-- ================================
+CREATE TABLE user_permission_groups
+(
+    user_id             BIGINT NOT NULL,
+    permission_group_id BIGINT NOT NULL,
+    PRIMARY KEY (user_id, permission_group_id),
+    CONSTRAINT fk_user_pg
+        FOREIGN KEY (user_id)
+            REFERENCES users (id)
+            ON DELETE CASCADE,
+    CONSTRAINT fk_pg
+        FOREIGN KEY (permission_group_id)
+            REFERENCES permission_group (id)
+            ON DELETE CASCADE
+);
+
+-- ================================
 -- Join Table (Many-To-Many)
 -- ================================
 CREATE TABLE permission_group_permissions (
                                               permission_group_id BIGINT NOT NULL,
                                               permission_id BIGINT NOT NULL,
                                               PRIMARY KEY (permission_group_id, permission_id),
-                                              CONSTRAINT fk_pg
+                                              CONSTRAINT fk_pgid
                                                   FOREIGN KEY (permission_group_id)
                                                       REFERENCES permission_group(id)
                                                       ON DELETE CASCADE,
