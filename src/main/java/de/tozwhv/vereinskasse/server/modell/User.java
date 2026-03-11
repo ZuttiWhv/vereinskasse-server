@@ -1,12 +1,15 @@
 package de.tozwhv.vereinskasse.server.modell;
 
-import lombok.*;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import static jakarta.persistence.FetchType.LAZY;
+import static jakarta.persistence.FetchType.EAGER;
 
 
 @Getter
@@ -15,6 +18,7 @@ import static jakarta.persistence.FetchType.LAZY;
 @AllArgsConstructor
 
 @Entity
+@Table(name = "users")
 public class User {
     @Id
     @GeneratedValue
@@ -22,21 +26,12 @@ public class User {
     private String username;
     private String password;
 
-    @ManyToMany(fetch = LAZY)
+    @ManyToMany(fetch = EAGER)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
-
-    @ManyToMany(fetch = LAZY)
-    @JoinTable(
-            name = "user_permission_groups",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "permission_group_id")
-    )
-    private Set<PermissionGroup> permissionGroups = new HashSet<>();
-
 
 }

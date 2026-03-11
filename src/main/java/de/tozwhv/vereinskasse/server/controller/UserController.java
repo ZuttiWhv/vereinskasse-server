@@ -6,22 +6,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/user")
 public class UserController {
 
-    @GetMapping("/public")
-    public String publicEndpoint() {
-        return "Open to all";
-    }
-
     @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('WRITE_USER')")
     public String adminEndpoint() {
         return "Admin only";
     }
 
     @GetMapping("/manage-users")
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAuthority('WRITE_USER')")
     public String manageUsers() {
         return "Permission Group protected";
     }

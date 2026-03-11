@@ -10,8 +10,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.security.auth.login.CredentialException;
-
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -38,7 +36,6 @@ public class AuthService {
                 !"refresh".equals(jwtProvider.extractType(refreshToken))) {
             throw new InvalidKeyException("Invalid refresh token");
         }
-
         String username = jwtProvider.getUsername(refreshToken);
         String access = jwtProvider.generateAccessToken(username);
         String refresh = jwtProvider.generateRefreshToken(username);
