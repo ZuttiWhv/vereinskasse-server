@@ -7,6 +7,7 @@ import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import io.jsonwebtoken.security.InvalidKeyException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +39,6 @@ public class AuthService {
                 !"refresh".equals(jwtProvider.extractType(refreshToken))) {
             throw new InvalidKeyException("Invalid refresh token");
         }
-
         String username = jwtProvider.getUsername(refreshToken);
         String access = jwtProvider.generateAccessToken(username);
         String refresh = jwtProvider.generateRefreshToken(username);

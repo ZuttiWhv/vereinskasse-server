@@ -13,15 +13,18 @@ import java.util.Date;
 public class JwtProvider {
 
     private final SecretKey key;
+    private final JwtParser jwtParser;
     private final long accessExpirationMs;
     private final long refreshExpirationMs;
 
     public JwtProvider(
-            @Value("${jwt.secret}") String secret,
+            SecretKey key,
+            JwtParser jwtParser,
             @Value("${jwt.access-expiration-ms}") long accessExpirationMs,
             @Value("${jwt.refresh-expiration-ms}") long refreshExpirationMs
     ) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.key = key;
+        this.jwtParser = jwtParser;
         this.accessExpirationMs = accessExpirationMs;
         this.refreshExpirationMs = refreshExpirationMs;
     }
@@ -39,7 +42,7 @@ public class JwtProvider {
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .id(username)
+                .subject(username)
                 .claim("type", type)
                 .issuedAt(now)
                 .expiration(expiry)
@@ -57,7 +60,7 @@ public class JwtProvider {
     }
 
     public String getUsername(String token) {
-        return parseClaims(token).getId();
+        return parseClaims(token).getSubject();
     }
 
     public String extractType(String token) {
@@ -65,10 +68,6 @@ public class JwtProvider {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser()
-                .decryptWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        return jwtParser.parseSignedClaims(token).getPayload();
     }
 }

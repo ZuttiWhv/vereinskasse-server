@@ -26,10 +26,10 @@ public class UserService implements UserDetailsService {
 
         List<GrantedAuthority> auths = new ArrayList<>();
 
-        user.getRoles().forEach(r -> auths.add(new SimpleGrantedAuthority("ROLE_" + r.getName())));
-        user.getPermissionGroups().forEach(pg ->
-                pg.getPermissions().forEach(p -> auths.add(new SimpleGrantedAuthority(p.getName())))
-        );
+        user.getRoles().forEach(role -> {
+            auths.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+            role.getPermissions().forEach(permission -> auths.add(new SimpleGrantedAuthority(permission.getName())));
+        });
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), auths);
