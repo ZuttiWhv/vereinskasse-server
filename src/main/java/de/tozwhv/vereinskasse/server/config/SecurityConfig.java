@@ -1,7 +1,6 @@
 package de.tozwhv.vereinskasse.server.config;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;

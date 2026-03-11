@@ -16,52 +16,52 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-    @RestController
-    @RequestMapping("/debug")
-    public class DebugController {
-        private final JwtParser jwtParser; // Die neue Bean
+@RestController
+@RequestMapping("/debug")
+public class DebugController {
+    private final JwtParser jwtParser; // Die neue Bean
 
-        public DebugController(JwtParser jwtParser) {
-            this.jwtParser = jwtParser;
+    public DebugController(JwtParser jwtParser) {
+        this.jwtParser = jwtParser;
+    }
+
+    @GetMapping("/authorities")
+    public List<String> getMyAuthorities() {
+        // Holt die aktuelle Authentifizierung aus dem SecurityContext
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null) {
+            return List.of("Keine Authentifizierung gefunden");
         }
 
-        @GetMapping("/authorities")
-        public List<String> getMyAuthorities() {
-            // Holt die aktuelle Authentifizierung aus dem SecurityContext
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // Extrahiert die Authorities und wandelt sie in einfache Strings um
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+    }
 
-            if (auth == null) {
-                return List.of("Keine Authentifizierung gefunden");
-            }
-
-            // Extrahiert die Authorities und wandelt sie in einfache Strings um
-            return auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
+    @GetMapping("/token-details")
+    public Map<String, Object> getTokenDetails(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return Map.of("error", "Kein Bearer Token gefunden");
         }
 
-        @GetMapping("/token-details")
-        public Map<String, Object> getTokenDetails(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Map.of("error", "Kein Bearer Token gefunden");
-            }
+        String token = authHeader.substring(7);
 
-            String token = authHeader.substring(7);
+        try {
+            // Wir nutzen den injizierten Parser direkt
+            Claims claims = jwtParser.parseSignedClaims(token).getPayload();
 
-            try {
-                // Wir nutzen den injizierten Parser direkt
-                Claims claims = jwtParser.parseSignedClaims(token).getPayload();
-
-                return Map.of(
-                        "subject", claims.getSubject(),
-                        "issuedAt", claims.getIssuedAt(),
-                        "expiration", claims.getExpiration(),
-                        "type", claims.get("type", String.class),
-                        "allClaims", claims // Gibt alle Felder (iss, sub, exp, etc.) zurück
-                );
-            } catch (Exception e) {
-                return Map.of("error", "Token ungültig: " + e.getMessage());
-            }
+            return Map.of(
+                    "subject", claims.getSubject(),
+                    "issuedAt", claims.getIssuedAt(),
+                    "expiration", claims.getExpiration(),
+                    "type", claims.get("type", String.class),
+                    "allClaims", claims // Gibt alle Felder (iss, sub, exp, etc.) zurück
+            );
+        } catch (Exception e) {
+            return Map.of("error", "Token ungültig: " + e.getMessage());
         }
     }
+}
 

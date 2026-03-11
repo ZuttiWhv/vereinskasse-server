@@ -1,9 +1,12 @@
 package de.tozwhv.vereinskasse.server.modell;
 
-import lombok.*;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 
 @Getter
@@ -11,11 +14,11 @@ import jakarta.persistence.Id;
 @NoArgsConstructor
 @AllArgsConstructor
 
-    @Entity
-    public class Permission {
-        @Id
-        @GeneratedValue
-        private Long id;
-        private String name;
-    }
+@Entity
+public class Permission {
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String name;
+}
 

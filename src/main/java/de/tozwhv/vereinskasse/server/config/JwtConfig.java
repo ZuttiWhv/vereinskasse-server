@@ -14,14 +14,14 @@ import javax.crypto.SecretKey;
 @Configuration
 public class JwtConfig {
 
-        @Value("${jwt.secret}")
-        private String secret;
+    @Value("${jwt.secret}")
+    private String secret;
 
-        @Bean
-        public SecretKey jwtSigningKey() {
-            byte[] keyBytes = Decoders.BASE64.decode(secret);
-            return Keys.hmacShaKeyFor(keyBytes);
-        }
+    @Bean
+    public SecretKey jwtSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
 
     @Bean
     public JwtParser jwtParser(SecretKey key) {
