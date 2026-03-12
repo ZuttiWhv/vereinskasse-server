@@ -31,6 +31,21 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration{
                 stmt.setString(1, "WRITE_PERMISSION"); stmt.executeUpdate();
                 stmt.setString(1, "DELETE_PERMISSION"); stmt.executeUpdate();
 
+                stmt.setString(1, "READ_PRODUCT");
+                stmt.executeUpdate();
+                stmt.setString(1, "WRITE_PRODUCT");
+                stmt.executeUpdate();
+                stmt.setString(1, "DELETE_PRODUCT");
+                stmt.executeUpdate();
+
+                stmt.setString(1, "READ_CATEGORY");
+                stmt.executeUpdate();
+                stmt.setString(1, "WRITE_CATEGORY");
+                stmt.executeUpdate();
+                stmt.setString(1, "DELETE_CATEGORY");
+                stmt.executeUpdate();
+
+
             }
 
 
