@@ -58,13 +58,16 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration{
                     String hashedPassword = encoder.encode("admin");
 
                     try (PreparedStatement insert = connection.prepareStatement(
-                            "INSERT INTO users (username, password) VALUES (?, ?)")) {
+                            "INSERT INTO users (username, password,balance,pin_enabled) VALUES (?, ?,?,?)")) {
                         insert.setString(1, "admin");
                         insert.setString(2, hashedPassword);
+                        insert.setInt(3, 0);
+                        insert.setBoolean(4, false);
                         insert.executeUpdate();
                     }
                 }
             }
+
 
             // -----------------------------
             // Optional: Zuordnungen Rollen & Groups

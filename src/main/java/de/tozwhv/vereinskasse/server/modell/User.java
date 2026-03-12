@@ -21,10 +21,20 @@ import static jakarta.persistence.FetchType.EAGER;
 @Table(name = "users")
 public class User {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
+
+    @Column(nullable = false)
     private String password;
+
+    private int pin;
+
+    private boolean pinEnabled;
+
+    private long balance;
 
     @ManyToMany(fetch = EAGER)
     @JoinTable(

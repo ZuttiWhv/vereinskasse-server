@@ -1,23 +1,67 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.UserDTO;
+import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.repository.UserRepository;
+import de.tozwhv.vereinskasse.server.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/users")
+@RequiredArgsConstructor // Erzeugt den Konstruktor für Dependency Injection (Lombok)
 public class UserController {
 
-    @GetMapping("/admin")
-    @PreAuthorize("hasAuthority('WRITE_USER')")
-    public String adminEndpoint() {
-        return "Admin only";
+    private final UserRepository userRepository;
+    private final UserService userService;
+
+    // Alle Benutzer abrufen
+    @PreAuthorize("hasAuthority('READ_USER')")
+    @GetMapping
+    public List<UserDTO> getAllUsers() {
+        return userService.getAllUsers();
     }
 
-    @GetMapping("/manage-users")
+    // Einzelnen Benutzer per ID finden
+    @PreAuthorize("hasAuthority('READ_USER')")
+    @GetMapping("/{id}")
+    public UserDTO getById(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+
+    // Neuen Benutzer erstellen
     @PreAuthorize("hasAuthority('WRITE_USER')")
-    public String manageUsers() {
-        return "Permission Group protected";
+    @PostMapping
+    public User createUser(@RequestBody User user) {
+        return userRepository.save(user);
+    }
+
+    // Benutzer aktualisieren
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+        return userRepository.findById(id).map(user -> {
+            user.setUsername(userDetails.getUsername());
+            user.setBalance(userDetails.getBalance());
+            user.setPin(userDetails.getPin());
+            user.setPinEnabled(userDetails.isPinEnabled());
+            user.setRoles(userDetails.getRoles());
+            return ResponseEntity.ok(userRepository.save(user));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // Benutzer löschen
+    @PreAuthorize("hasAuthority('DELETE_USER')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }
