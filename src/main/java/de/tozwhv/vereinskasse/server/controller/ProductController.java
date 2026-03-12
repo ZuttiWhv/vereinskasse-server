@@ -39,6 +39,20 @@ public class ProductController {
         return productRepository.save(product);
     }
 
+    // Benutzer aktualisieren
+    @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {
+        return productRepository.findById(id).map(product -> {
+            product.setAnzeigename(productDetails.getAnzeigename());
+            product.setCategory(productDetails.getCategory());
+            product.setName(productDetails.getName());
+            product.setImagePath(productDetails.getImagePath());
+            product.setPrice(productDetails.getPrice());
+            return ResponseEntity.ok(productRepository.save(product));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('DELETE_PRODUCT')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
