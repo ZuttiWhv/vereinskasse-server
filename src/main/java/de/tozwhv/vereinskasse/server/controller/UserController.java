@@ -6,6 +6,7 @@ import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,24 +20,28 @@ public class UserController {
     private final UserService userService;
 
     // Alle Benutzer abrufen
+    @PreAuthorize("hasAuthority('READ_USER')")
     @GetMapping
     public List<UserDTO> getAllUsers() {
         return userService.getAllUsers();
     }
 
     // Einzelnen Benutzer per ID finden
+    @PreAuthorize("hasAuthority('READ_USER')")
     @GetMapping("/{id}")
     public UserDTO getById(@PathVariable Long id) {
         return userService.getUserById(id);
     }
 
     // Neuen Benutzer erstellen
+    @PreAuthorize("hasAuthority('WRITE_USER')")
     @PostMapping
     public User createUser(@RequestBody User user) {
         return userRepository.save(user);
     }
 
     // Benutzer aktualisieren
+    @PreAuthorize("hasAuthority('WRITE_USER')")
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
         return userRepository.findById(id).map(user -> {
@@ -50,6 +55,7 @@ public class UserController {
     }
 
     // Benutzer löschen
+    @PreAuthorize("hasAuthority('DELETE_USER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         if (userRepository.existsById(id)) {
