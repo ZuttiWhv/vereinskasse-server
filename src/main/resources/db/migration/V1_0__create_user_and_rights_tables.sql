@@ -17,7 +17,8 @@ CREATE TABLE users (
                        password    VARCHAR(255) NOT NULL,
                        balance     BIGINT       NOT NULL,
                        pin         int     DEFAULT 0,
-                       pin_enabled boolean DEFAULT FALSE
+                       pin_enabled boolean DEFAULT FALSE,
+                       is_Locked   boolean DEFAULT FALSE
 );
 
 -- ================================
