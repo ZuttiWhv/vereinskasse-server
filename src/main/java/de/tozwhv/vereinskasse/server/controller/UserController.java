@@ -50,6 +50,7 @@ public class UserController {
             user.setPin(userDetails.getPin());
             user.setPinEnabled(userDetails.isPinEnabled());
             user.setRoles(userDetails.getRoles());
+            user.setLocked(userDetails.isLocked());
             return ResponseEntity.ok(userRepository.save(user));
         }).orElse(ResponseEntity.notFound().build());
     }
