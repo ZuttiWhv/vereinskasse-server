@@ -29,12 +29,12 @@ public class Sale {
 
     @Getter
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "fk_product_id", nullable = false)
+    @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
     @Getter
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "fk_user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @CreationTimestamp
