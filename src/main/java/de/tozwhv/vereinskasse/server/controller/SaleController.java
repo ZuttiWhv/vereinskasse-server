@@ -1,7 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
 import de.tozwhv.vereinskasse.server.dto.SaleDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
@@ -9,13 +8,13 @@ import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.server.ResponseStatusException;
-
 
 import java.util.List;
 
@@ -59,36 +58,48 @@ public class SaleController {
     @PreAuthorize("hasAuthority('WRITE_ALL_SALES') or hasAuthority('WRITE_OWN_SALES')")
     public ResponseEntity<Sale> createSale(
             @RequestBody SaleDTO dto,
-            Authentication authentication,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) { // currentUser entfernt, wir laden ihn selbst
 
-        // 1. Validierung (statt ResponseEntity.badRequest() zu senden, werfen wir eine Exception)
+        // 1. Validierung
         if (dto.getProductId() == null || dto.getAmount() == null || dto.getAmount() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produkt und gültige Menge erforderlich.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültige Daten.");
         }
 
-        // 2. Produkt laden
-        var product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produkt nicht gefunden"));
+        // 2. Den aktuell angemeldeten User sicher aus der DB laden
+        // authentication.getName() liefert den Usernamen aus dem JWT/Session
+        User loggedInUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden."));
 
-        // 3. Sale Objekt bauen
+        // 3. Produkt laden
+        var product = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produkt nicht gefunden."));
+
+        // 4. Sale Objekt bauen
         Sale sale = new Sale();
         sale.setProduct(product);
         sale.setAmount(dto.getAmount());
         sale.setPrice(product.getPrice() * dto.getAmount());
 
-        // 4. Benutzer zuordnen (Logik bleibt gleich)
+        // 5. Benutzer-Zuweisung mit Admin-Check
         if (hasAuthority(authentication, "WRITE_ALL_SALES") && dto.getUserId() != null) {
+            // Admin-Modus: Buche für jemand anderen
             User targetUser = userRepository.findById(dto.getUserId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden."));
             sale.setUser(targetUser);
         } else {
-            sale.setUser(currentUser);
+            // Standard-Modus: Buche auf den aktuell angemeldeten User
+            sale.setUser(loggedInUser); // Jetzt garantiert nicht mehr null!
         }
 
-        // 5. Speichern und mit festem Typ zurückgeben
-        Sale savedSale = saleRepository.save(sale);
-        return ResponseEntity.ok(savedSale);
+        // 6. Guthaben-Logik (wie zuvor besprochen)
+        if (sale.getUser().getBalance() < sale.getPrice()) {
+            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Guthaben nicht ausreichend!");
+        }
+
+        sale.getUser().setBalance(sale.getUser().getBalance() - sale.getPrice());
+        userRepository.save(sale.getUser());
+
+        return ResponseEntity.ok(saleRepository.save(sale));
     }
 
     @DeleteMapping("/{id}")
