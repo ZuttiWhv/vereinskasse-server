@@ -7,8 +7,8 @@ public record UserDTO(
         String username,
         boolean pinEnabled,
         long balance,
-        Set<String> roles
-) {
-
+        Set<String> roles,
+        Set<String> authorities
+){
 
 }
