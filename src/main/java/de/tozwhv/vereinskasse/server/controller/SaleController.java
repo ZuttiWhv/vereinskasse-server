@@ -38,10 +38,10 @@ public class SaleController {
     @PreAuthorize("hasAuthority('READ_ALL_SALES') or hasAuthority('READ_OWN_SALES')")
     public List<Sale> getAllSales(Authentication authentication, @AuthenticationPrincipal User currentUser) {
         if (hasAuthority(authentication, "READ_ALL_SALES")) {
-            return saleRepository.findAll();
+            return saleRepository.findAllByOrderByCreatedAtDesc();
         }
         // Nutzt die direkte Objekt-Referenz im Repository
-        return saleRepository.findByUser(currentUser);
+        return saleRepository.findByUserOrderByCreatedAtDesc(currentUser);
     }
 
     // Prüft nach dem Laden, ob der User das Recht hat, diesen speziellen Verkauf zu sehen
