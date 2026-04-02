@@ -91,6 +91,27 @@ public class SaleController {
         return ResponseEntity.ok(savedSale);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('DELETE_SALES')")
+    public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
+        // 1. Sale suchen (oder 404 werfen)
+        Sale sale = saleRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Verkauf nicht gefunden"));
+
+        // 2. Rückerstattung: Geld dem User wieder gutschreiben
+        User user = sale.getUser();
+        if (user != null) {
+            user.setBalance(user.getBalance() + sale.getPrice());
+            userRepository.save(user);
+        }
+
+        // 3. Aus der Datenbank löschen
+        saleRepository.delete(sale);
+
+        // 4. Rückgabe: 204 No Content (Standard für erfolgreiches Löschen)
+        return ResponseEntity.noContent().build();
+    }
+
 
     // Hilfsmethode zur Rollenprüfung
     private boolean hasAuthority(Authentication auth, String authority) {
