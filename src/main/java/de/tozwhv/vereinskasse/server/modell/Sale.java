@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -38,7 +38,8 @@ public class Sale {
     private User user;
 
     @CreationTimestamp
-    private Date timestamp;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     public Sale() {
     }
