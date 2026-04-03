@@ -1,8 +1,11 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.CategoryDTO;
 import de.tozwhv.vereinskasse.server.modell.Category;
 import de.tozwhv.vereinskasse.server.repository.CategoryRepository;
 import de.tozwhv.vereinskasse.server.service.FileStorageService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -28,10 +31,23 @@ public class CategoryController {
         return categoryRepository.findAll();
     }
 
-    @PostMapping
+    @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_CATEGORY')")
-    public Category create(@RequestBody Category category) {
-        return categoryRepository.save(category);
+    public ResponseEntity<Category> update(@PathVariable Long id, @Valid @RequestBody CategoryDTO dto) {
+        return categoryRepository.findById(id).map(existingCategory -> {
+            existingCategory.setName(dto.getName());
+            if (dto.getImagePath() != null && !dto.getImagePath().isBlank()) {
+                existingCategory.setImagePath(dto.getImagePath());
+            }
+            Category updated = categoryRepository.save(existingCategory);
+            return ResponseEntity.ok(updated);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<Category> create(@Valid @RequestBody CategoryDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(categoryRepository.save(dto.toEntity()));
     }
 
     @PostMapping("/{id}/image")

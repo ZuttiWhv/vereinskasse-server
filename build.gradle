@@ -26,6 +26,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-flyway' // module dependency
     implementation 'com.h2database:h2'
+    implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'com.h2database:h2:2.3.232'
     implementation 'org.flywaydb:flyway-core'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
