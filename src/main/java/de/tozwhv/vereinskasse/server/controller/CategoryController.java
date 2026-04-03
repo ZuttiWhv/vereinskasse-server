@@ -31,6 +31,19 @@ public class CategoryController {
         return categoryRepository.findAll();
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('WRITE_CATEGORY')")
+    public ResponseEntity<Category> update(@PathVariable Long id, @Valid @RequestBody CategoryDTO dto) {
+        return categoryRepository.findById(id).map(existingCategory -> {
+            existingCategory.setName(dto.getName());
+            if (dto.getImagePath() != null && !dto.getImagePath().isBlank()) {
+                existingCategory.setImagePath(dto.getImagePath());
+            }
+            Category updated = categoryRepository.save(existingCategory);
+            return ResponseEntity.ok(updated);
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<Category> create(@Valid @RequestBody CategoryDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
