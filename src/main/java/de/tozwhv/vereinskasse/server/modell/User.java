@@ -51,13 +51,18 @@ public class User implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Wandelt deine Rollen (z.B. "ADMIN") in GrantedAuthorities um
-        // Falls deine Role-Klasse ein Feld "name" hat, nutzt du dieses hier:
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
+        return getPermissions().stream()
+                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
                 .collect(Collectors.toList());
+    }
+
+    public Set<Permission> getPermissions() {
+        HashSet<Permission> returnSet = new HashSet<>();
+        roles.forEach(role -> returnSet.addAll(role.getPermissions()));
+        return returnSet;
     }
 
     @Override

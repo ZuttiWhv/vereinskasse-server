@@ -6,15 +6,12 @@ import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,15 +26,8 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        List<GrantedAuthority> auths = new ArrayList<>();
-
-        user.getRoles().forEach(role -> {
-            auths.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
-            role.getPermissions().forEach(permission -> auths.add(new SimpleGrantedAuthority(permission.getName())));
-        });
-
         return new org.springframework.security.core.userdetails.User(
-                user.getUsername(), user.getPassword(), auths);
+                user.getUsername(), user.getPassword(), user.getAuthorities());
     }
 
     public UserDTO getUserById(long id) {
@@ -45,6 +35,12 @@ public class UserService implements UserDetailsService {
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
 
+    }
+
+    public UserDTO getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .map(this::convertToDTO)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
     }
 
     /**
@@ -68,6 +64,9 @@ public class UserService implements UserDetailsService {
                 user.getBalance(),
                 user.getRoles().stream()
                         .map(Role::getName)
+                        .collect(Collectors.toSet()),
+                user.getAuthorities().stream()
+                        .map(Object::toString)
                         .collect(Collectors.toSet())
         );
     }
