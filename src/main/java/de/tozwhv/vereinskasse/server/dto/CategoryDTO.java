@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.dto;
 
+import de.tozwhv.vereinskasse.server.modell.Category;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -16,4 +17,23 @@ public class CategoryDTO {
 
     // Hier erlauben wir null, falls noch kein Bild da ist
     private String imagePath;
+
+    // Die Mapper-Methode
+    public Category toEntity() {
+        Category category = new Category();
+        category.setId(this.id);
+        category.setName(this.name);
+        // Standardwert-Logik hier zentralisieren
+        category.setImagePath(this.imagePath != null ? this.imagePath : "default-cat.png");
+        return category;
+    }
+
+    public static CategoryDTO fromEntity(Category entity) {
+        CategoryDTO dto = new CategoryDTO();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setImagePath(entity.getImagePath());
+        return dto;
+    }
+
 }
