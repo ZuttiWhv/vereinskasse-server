@@ -21,12 +21,12 @@ public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    private long id;
+    private Long id;
 
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "imagePath", nullable = false)
+    @Column(name = "imagePath")
     private String imagePath;
 
     @OneToMany(mappedBy = "category")
