@@ -39,3 +39,4 @@ out/
 /data/vereinskasse.trace.db
 /gradle.properties
 /data/vereinskasse.lock.db
+/data/media/
