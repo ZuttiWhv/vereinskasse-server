@@ -45,6 +45,7 @@ public class CategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('WRITE_CATEGORY')")
     public ResponseEntity<Category> create(@Valid @RequestBody CategoryDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(categoryRepository.save(dto.toEntity()));
