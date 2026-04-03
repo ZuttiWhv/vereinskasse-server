@@ -1,8 +1,11 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.CategoryDTO;
 import de.tozwhv.vereinskasse.server.modell.Category;
 import de.tozwhv.vereinskasse.server.repository.CategoryRepository;
 import de.tozwhv.vereinskasse.server.service.FileStorageService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,9 +32,9 @@ public class CategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('WRITE_CATEGORY')")
-    public Category create(@RequestBody Category category) {
-        return categoryRepository.save(category);
+    public ResponseEntity<Category> create(@Valid @RequestBody CategoryDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(categoryRepository.save(dto.toEntity()));
     }
 
     @PostMapping("/{id}/image")
