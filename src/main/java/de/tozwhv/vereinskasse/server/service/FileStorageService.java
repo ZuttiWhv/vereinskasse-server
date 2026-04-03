@@ -14,19 +14,22 @@ import java.util.UUID;
 @Service
 public class FileStorageService {
 
-    @Value("${app.upload.dir}")
+    @Value("${app.upload-dir}")
     private String uploadDir;
 
-    public String storeFile(MultipartFile file) throws IOException {
+    public String storeFile(MultipartFile file) {
+        try {
         Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
         if (!Files.exists(root)) {
             Files.createDirectories(root);
         }
 
         // Dateiname generieren (UUID zur Vermeidung von Duplikaten/Cache-Problemen)
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
         Path target = root.resolve(fileName);
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
         return fileName;
+    }  catch (IOException _) {
+       return null;
     }
-}
+}}
