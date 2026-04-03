@@ -1,10 +1,11 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.modell.Product;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+
 
 import java.util.List;
 
@@ -20,7 +21,10 @@ public class ProductController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('READ_PRODUCT')")
-    public List<Product> getAllProducts() {
+    public List<Product> getAllProducts(@RequestParam(required = false) Long categoryId) {
+        if (categoryId != null) {
+            return productRepository.findByCategoryId(categoryId);
+        }
         return productRepository.findAll();
     }
 
