@@ -1,11 +1,12 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.modell.Product;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
+import de.tozwhv.vereinskasse.server.service.FileStorageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -14,9 +15,11 @@ import java.util.List;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final FileStorageService storageService;
 
-    public ProductController(ProductRepository productRepository) {
+    public ProductController(ProductRepository productRepository, FileStorageService storageService) {
         this.productRepository = productRepository;
+        this.storageService = storageService;
     }
 
     @GetMapping
@@ -43,7 +46,22 @@ public class ProductController {
         return productRepository.save(product);
     }
 
-    // Benutzer aktualisieren
+    @PostMapping("/{id}/image")
+    @PreAuthorize("hasAuthority('WRITE_PRODUCT') and hasAuthority('UPLOAD_IMAGES')")
+    public ResponseEntity<String> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+
+        String path = storageService.storeFile(file);
+        if (path != null) {
+            Product p = productRepository.findById(id).orElseThrow();
+            p.setImagePath("/media/" + path);
+            productRepository.save(p);
+            return ResponseEntity.ok(p.getImagePath());
+        } else {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+
     @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
     @PutMapping("/{id}")
     public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {

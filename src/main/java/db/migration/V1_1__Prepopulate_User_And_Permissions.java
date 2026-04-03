@@ -54,7 +54,6 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.setString(1, "DELETE_CATEGORY");
             stmt.executeUpdate();
 
-
             stmt.setString(1, "READ_ALL_SALES");
             stmt.executeUpdate();
             stmt.setString(1, "WRITE_ALL_SALES");
@@ -67,7 +66,8 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.setString(1, "WRITE_OWN_SALES");
             stmt.executeUpdate();
 
-
+            stmt.setString(1, "UPLOAD_IMAGES");
+            stmt.executeUpdate();
         }
 
 
