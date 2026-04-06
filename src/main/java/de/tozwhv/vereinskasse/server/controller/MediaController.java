@@ -20,7 +20,7 @@ public class MediaController {
     @GetMapping("/{filename}")
     public ResponseEntity<byte[]> getImage(
             @PathVariable String filename,
-            @RequestParam(defaultValue = "80") int width) { // Standardbreite 100px
+            @RequestParam(defaultValue = "80") int width) { // Standardbreite 80px
 
         try {
             byte[] imageBytes = resizeService.resizeImage(filename, width);
