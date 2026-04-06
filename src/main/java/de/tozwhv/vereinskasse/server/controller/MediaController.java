@@ -26,7 +26,7 @@ public class MediaController {
             byte[] imageBytes = resizeService.resizeImage(filename, width);
 
             return ResponseEntity.ok()
-                    .contentType(MediaType.IMAGE_JPEG)
+                    .contentType(MediaType.IMAGE_PNG)
                     .header("Cache-Control", "public, max-age=31536000") // 1 Jahr Browser-Cache!
                     .body(imageBytes);
         } catch (IOException _) {
