@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.SaleDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
@@ -17,15 +18,33 @@ public class SaleService {
         this.saleRepository = saleRepository;
     }
 
-    public List<Sale> getSalesFiltered(User currentUser, LocalDateTime start, LocalDateTime end, boolean isAdmin) {
-        // Falls kein Datum geliefert wurde, setzen wir einen extrem weiten Bereich oder Standard
+    public List<SaleDTO> getSalesFiltered(User currentUser, LocalDateTime start, LocalDateTime end, boolean isAdmin) {
+        List<Sale> sales;
+
         if (start == null) start = LocalDateTime.now().minusYears(100);
         if (end == null) end = LocalDateTime.now();
 
         if (isAdmin) {
-            return saleRepository.findAllByCreatedAtBetweenOrderByCreatedAtDesc(start, end);
+            sales = saleRepository.findAllByCreatedAtBetweenOrderByCreatedAtDesc(start, end);
         } else {
-            return saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(currentUser, start, end);
+            sales = saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(currentUser, start, end);
         }
+
+        // Mapping von Entity zu DTO
+        return sales.stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+    private SaleDTO convertToDTO(Sale sale) {
+        return new SaleDTO(
+                sale.getId(),
+                sale.getPrice(),
+                sale.getAmount(),
+                sale.getCreatedAt(),
+                sale.getProduct().getId(),
+                sale.getProduct().getAnzeigename() != null ? sale.getProduct().getAnzeigename() : sale.getProduct().getName(),
+                sale.getUser().getId(),
+                sale.getUser().getUsername()
+        );
     }
 }
