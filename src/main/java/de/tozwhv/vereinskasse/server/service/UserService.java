@@ -57,6 +57,39 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    public User updateUser(Long id, UserRequestDTO dto) {
+        // 1. Bestehenden Benutzer laden oder Fehler werfen
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
+
+        user.setUsername(dto.username());
+
+        if (dto.password() != null && !dto.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.password()));
+        }
+
+        if (dto.balance() != null) {
+            user.setBalance(dto.balance());
+        }
+        if (dto.pin() != null) {
+            user.setPin(dto.pin());
+        }
+
+        // 5. Rollen aktualisieren
+        if (dto.roleIds() != null) {
+            // Alle Rollen-Entitäten anhand der gelieferten IDs laden
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
+
+            // Validierung: Ein User sollte mindestens eine Rolle haben
+            if (!roles.isEmpty()) {
+                user.setRoles(roles);
+            }
+        }
+
+        // 6. Speichern und zurückgeben
+        return userRepository.save(user);
+    }
+
     public UserDTO getUserById(long id) {
         return userRepository.findById(id)
                 .map(this::convertToDTO)
