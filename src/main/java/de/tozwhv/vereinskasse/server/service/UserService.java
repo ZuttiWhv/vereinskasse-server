@@ -2,17 +2,19 @@ package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.repository.DepositRepository;
 import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
@@ -27,14 +29,17 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DepositRepository depositRepository;
 
     // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       DepositRepository depositRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.depositRepository = depositRepository;
     }
 
     @Override
@@ -44,6 +49,28 @@ public class UserService implements UserDetailsService {
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.getAuthorities());
+    }
+
+    @Transactional
+    public void processDeposit(Long targetUserId, int amount, String adminUsername) {
+        // 1. Beteiligte laden
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("Ziel-Benutzer nicht gefunden"));
+
+        User admin = userRepository.findByUsername(adminUsername)
+                .orElseThrow(() -> new RuntimeException("Admin nicht gefunden"));
+
+        // 2. Guthaben aktualisieren
+        targetUser.setBalance(targetUser.getBalance() + amount);
+        userRepository.save(targetUser);
+
+        // 3. Einzahlung protokollieren
+        Deposit deposit = new Deposit();
+        deposit.setUser(targetUser);
+        deposit.setCreatedBy(admin);
+        deposit.setAmount(amount);
+
+        depositRepository.save(deposit); // Du benötigst ein DepositRepository
     }
 
     public User createUser(UserRequestDTO dto) {
