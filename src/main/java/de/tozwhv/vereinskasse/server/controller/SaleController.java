@@ -1,5 +1,7 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.service.SaleService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.dto.SaleDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
@@ -16,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -25,24 +28,30 @@ public class SaleController {
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final SaleService saleService;
 
     @Autowired
-    public SaleController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository) {
+    public SaleController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository, SaleService saleService) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.saleService = saleService;
     }
 
-    // Holt alle Verkäufe (Admin) oder nur die eigenen (User)
+
+
     @GetMapping
     @PreAuthorize("hasAuthority('READ_ALL_SALES') or hasAuthority('READ_OWN_SALES')")
-    public List<Sale> getAllSales(Authentication authentication, @AuthenticationPrincipal User currentUser) {
-        if (hasAuthority(authentication, "READ_ALL_SALES")) {
-            return saleRepository.findAllByOrderByCreatedAtDesc();
-        }
-        // Nutzt die direkte Objekt-Referenz im Repository
-        return saleRepository.findByUserOrderByCreatedAtDesc(currentUser);
+    public List<Sale> getAllSales(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            Authentication authentication,
+            @AuthenticationPrincipal User currentUser) {
+
+        boolean isAdmin = hasAuthority(authentication, "READ_ALL_SALES");
+        return saleService.getSalesFiltered(currentUser, start, end, isAdmin);
     }
+
 
     // Prüft nach dem Laden, ob der User das Recht hat, diesen speziellen Verkauf zu sehen
     @GetMapping("/{id}")
