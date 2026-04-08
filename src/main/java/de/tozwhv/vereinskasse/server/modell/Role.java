@@ -20,7 +20,7 @@ import static jakarta.persistence.FetchType.EAGER;
 @Entity
 public class Role {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Diese Zeile ändern!
     private Long id;
     private String name;
 
