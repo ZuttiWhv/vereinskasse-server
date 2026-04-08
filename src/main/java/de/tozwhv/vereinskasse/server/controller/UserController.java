@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.modell.User;
@@ -36,25 +37,19 @@ public class UserController {
     }
 
     // Neuen Benutzer erstellen
-    @PreAuthorize("hasAuthority('WRITE_USER')")
     @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userRepository.save(user);
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    public ResponseEntity<User> createUser(@RequestBody UserRequestDTO dto) {
+        User createdUser = userService.createUser(dto);
+        return ResponseEntity.ok(createdUser);
     }
 
-    // Benutzer aktualisieren
-    @PreAuthorize("hasAuthority('WRITE_USER')")
+    //Benutzer aktualisieren
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
-        return userRepository.findById(id).map(user -> {
-            user.setUsername(userDetails.getUsername());
-            user.setBalance(userDetails.getBalance());
-            user.setPin(userDetails.getPin());
-            user.setPinEnabled(userDetails.isPinEnabled());
-            user.setRoles(userDetails.getRoles());
-            user.setLocked(userDetails.isLocked());
-            return ResponseEntity.ok(userRepository.save(user));
-        }).orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody UserRequestDTO dto) {
+        User updatedUser = userService.updateUser(id, dto);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @GetMapping("/me")

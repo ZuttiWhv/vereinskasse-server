@@ -1,25 +1,41 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class UserService implements UserDetailsService {
 
-    @Autowired
-    UserRepository userRepository;
+    // final stellt sicher, dass die Abhängigkeiten beim Start gesetzt werden müssen
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
+    public UserService(UserRepository userRepository,
+                       RoleRepository roleRepository,
+                       PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -28,6 +44,58 @@ public class UserService implements UserDetailsService {
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.getAuthorities());
+    }
+
+    public User createUser(UserRequestDTO dto) {
+        User user = new User();
+        user.setUsername(dto.username());
+        user.setPassword(passwordEncoder.encode(dto.password()));
+
+        // Null-Check oder Default-Werte setzen
+        user.setBalance(dto.balance() != null ? dto.balance() : 0);
+        user.setPin(dto.pin() != null ? dto.pin() : 0);
+        user.setPinEnabled(false);
+
+        // Rollen-Mapping
+        if (dto.roleIds() != null) {
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
+            user.setRoles(roles);
+        }
+
+        return userRepository.save(user);
+    }
+
+    public User updateUser(Long id, UserRequestDTO dto) {
+        // 1. Bestehenden Benutzer laden oder Fehler werfen
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
+
+        user.setUsername(dto.username());
+
+        if (dto.password() != null && !dto.password().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.password()));
+        }
+
+        if (dto.balance() != null) {
+            user.setBalance(dto.balance());
+        }
+        if (dto.pin() != null) {
+            user.setPin(dto.pin());
+        }
+
+        // 5. Rollen aktualisieren
+        if (dto.roleIds() != null) {
+            // Alle Rollen-Entitäten anhand der gelieferten IDs laden
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
+
+            // Validierung: Ein User sollte mindestens eine Rolle haben
+            if (!roles.isEmpty()) {
+                user.setRoles(roles);
+            }
+        }
+
+        // 6. Speichern und zurückgeben
+        return userRepository.save(user);
     }
 
     public UserDTO getUserById(long id) {
