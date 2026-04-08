@@ -1,6 +1,8 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.modell.Deposit;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.modell.User;
@@ -44,6 +46,17 @@ public class UserController {
         return ResponseEntity.ok(createdUser);
     }
 
+    @PostMapping("/{id}/deposit")
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    public ResponseEntity<Deposit> deposit(
+            @PathVariable Long id,
+            @RequestBody Integer amount,
+            Authentication auth) {
+
+        userService.processDeposit(id, amount, auth.getName());
+        return ResponseEntity.ok().build();
+    }
+
     //Benutzer aktualisieren
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_USER')")
@@ -51,6 +64,8 @@ public class UserController {
         User updatedUser = userService.updateUser(id, dto);
         return ResponseEntity.ok(updatedUser);
     }
+
+
 
     @GetMapping("/me")
     public UserDTO showSelf(Authentication auth) {
