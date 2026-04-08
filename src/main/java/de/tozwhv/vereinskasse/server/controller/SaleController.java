@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.SaleRequestDTO;
 import de.tozwhv.vereinskasse.server.service.SaleService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +67,7 @@ public class SaleController {
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_ALL_SALES') or hasAuthority('WRITE_OWN_SALES')")
     public ResponseEntity<Sale> createSale(
-            @RequestBody SaleDTO dto,
+            @RequestBody SaleRequestDTO dto,
             Authentication authentication) { // currentUser entfernt, wir laden ihn selbst
 
         // 1. Validierung
@@ -89,15 +90,15 @@ public class SaleController {
         sale.setAmount(dto.amount());
         sale.setPrice(product.getPrice() * dto.amount());
 
-        // 5. Benutzer-Zuweisung mit Admin-Check
-        if (hasAuthority(authentication, "WRITE_ALL_SALES")) {
-            // Admin-Modus: Buche für jemand anderen
+// 5. Benutzer-Zuweisung mit Logik-Trennung
+        if (hasAuthority(authentication, "WRITE_ALL_SALES") && dto.userId() != null) {
+            // Admin-Modus: Buche für jemand anderen, falls eine ID mitgeliefert wurde
             User targetUser = userRepository.findById(dto.userId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden."));
             sale.setUser(targetUser);
         } else {
-            // Standard-Modus: Buche auf den aktuell angemeldeten User
-            sale.setUser(loggedInUser); // Jetzt garantiert nicht mehr null!
+            // Standard-Modus ODER Admin bucht für sich selbst (keine userId im DTO)
+            sale.setUser(loggedInUser);
         }
 
         // 6. Guthaben-Logik (wie zuvor besprochen)
