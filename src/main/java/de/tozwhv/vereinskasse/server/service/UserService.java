@@ -1,25 +1,33 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class UserService implements UserDetailsService {
 
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     @Autowired
     UserRepository userRepository;
+    RoleRepository roleRepository;
+
 
     @Override
     public UserDetails loadUserByUsername(String username) {
@@ -28,6 +36,25 @@ public class UserService implements UserDetailsService {
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.getAuthorities());
+    }
+
+    public User createUser(UserRequestDTO dto) {
+        User user = new User();
+        user.setUsername(dto.username());
+        user.setPassword(passwordEncoder.encode(dto.password()));
+
+        // Null-Check oder Default-Werte setzen
+        user.setBalance(dto.balance() != null ? dto.balance() : 0);
+        user.setPin(dto.pin() != null ? dto.pin() : 0);
+        user.setPinEnabled(false);
+
+        // Rollen-Mapping
+        if (dto.roleIds() != null) {
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
+            user.setRoles(roles);
+        }
+
+        return userRepository.save(user);
     }
 
     public UserDTO getUserById(long id) {
