@@ -6,12 +6,12 @@ import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,11 +23,19 @@ import java.util.stream.Collectors;
 @Service
 public class UserService implements UserDetailsService {
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    @Autowired
-    UserRepository userRepository;
-    RoleRepository roleRepository;
+    // final stellt sicher, dass die Abhängigkeiten beim Start gesetzt werden müssen
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
+    // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
+    public UserService(UserRepository userRepository,
+                       RoleRepository roleRepository,
+                       PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public UserDetails loadUserByUsername(String username) {
