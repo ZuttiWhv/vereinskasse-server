@@ -1,12 +1,15 @@
 package de.tozwhv.vereinskasse.server.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.time.LocalDateTime;
 
-@Getter
-@Setter
-public class SaleDTO {
-    private Long productId;
-    private Integer amount;
-    private Long userId; // Nur gefüllt, wenn WRITE_ALL_SALES vorhanden ist
+public record SaleDTO(
+        long id,
+        int price,
+        int amount,
+        LocalDateTime createdAt,
+        long productId,
+        String productName,
+        long userId,
+        String username
+) {
 }

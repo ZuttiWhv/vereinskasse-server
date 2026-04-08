@@ -42,7 +42,7 @@ public class SaleController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('READ_ALL_SALES') or hasAuthority('READ_OWN_SALES')")
-    public List<Sale> getAllSales(
+    public List<SaleDTO> getAllSales(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             Authentication authentication,
@@ -70,7 +70,7 @@ public class SaleController {
             Authentication authentication) { // currentUser entfernt, wir laden ihn selbst
 
         // 1. Validierung
-        if (dto.getProductId() == null || dto.getAmount() == null || dto.getAmount() <= 0) {
+        if ( dto.amount() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültige Daten.");
         }
 
@@ -80,19 +80,19 @@ public class SaleController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden."));
 
         // 3. Produkt laden
-        var product = productRepository.findById(dto.getProductId())
+        var product = productRepository.findById(dto.productId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produkt nicht gefunden."));
 
         // 4. Sale Objekt bauen
         Sale sale = new Sale();
         sale.setProduct(product);
-        sale.setAmount(dto.getAmount());
-        sale.setPrice(product.getPrice() * dto.getAmount());
+        sale.setAmount(dto.amount());
+        sale.setPrice(product.getPrice() * dto.amount());
 
         // 5. Benutzer-Zuweisung mit Admin-Check
-        if (hasAuthority(authentication, "WRITE_ALL_SALES") && dto.getUserId() != null) {
+        if (hasAuthority(authentication, "WRITE_ALL_SALES")) {
             // Admin-Modus: Buche für jemand anderen
-            User targetUser = userRepository.findById(dto.getUserId())
+            User targetUser = userRepository.findById(dto.userId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden."));
             sale.setUser(targetUser);
         } else {
