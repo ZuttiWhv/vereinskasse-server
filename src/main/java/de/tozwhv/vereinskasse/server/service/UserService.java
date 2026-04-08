@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.DepositRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Role;
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
@@ -44,6 +46,17 @@ public class UserService implements UserDetailsService {
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.getAuthorities());
+    }
+
+    @Transactional
+    public User deposit(DepositRequestDTO dto) {
+        User user = userRepository.findById(dto.userId())
+                .orElseThrow(() -> new RuntimeException("Benutzer nicht gefunden"));
+
+        // Guthaben erhöhen
+        user.setBalance(user.getBalance()+ dto.amountInCents());
+
+        return userRepository.save(user);
     }
 
     public User createUser(UserRequestDTO dto) {
