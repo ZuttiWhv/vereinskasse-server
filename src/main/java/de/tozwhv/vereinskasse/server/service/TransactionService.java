@@ -41,7 +41,7 @@ public class TransactionService {
                 "SALE",
                 s.getProduct().getName(),
                 s.getAmount(),
-                s.getAmount() * s.getPrice(), // Hier berechnen wir die Gesamtsumme
+                s.getPrice(), // Gesammtsumme der Transaktion liegt bereits vor
                 s.getCreatedAt()
         )));
 
