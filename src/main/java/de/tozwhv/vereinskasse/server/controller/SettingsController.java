@@ -2,7 +2,6 @@ package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.AppSettingsDTO;
 import de.tozwhv.vereinskasse.server.modell.AppSettings;
-import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.SettingsRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
