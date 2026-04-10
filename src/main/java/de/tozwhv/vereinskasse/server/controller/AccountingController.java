@@ -1,6 +1,7 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.TransactionDTO;
+import de.tozwhv.vereinskasse.server.dto.UserBalanceDTO;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
@@ -50,4 +51,12 @@ public class AccountingController {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
             return transactionService.getUserHistory(user, start, end);
         }
+
+
+    @GetMapping("/balances")
+    @PreAuthorize("hasAuthority('READ_ALL_BALANCES')")
+    public List<UserBalanceDTO> getAllUserBalances(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime stichtag) {
+        return transactionService.getALLUsersBalanceAtDate(stichtag);
+    }
 }

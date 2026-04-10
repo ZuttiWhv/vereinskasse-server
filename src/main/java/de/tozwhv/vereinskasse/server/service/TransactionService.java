@@ -1,26 +1,31 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.TransactionDTO;
+import de.tozwhv.vereinskasse.server.dto.UserBalanceDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.DepositRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
+import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class TransactionService {
     private final SaleRepository saleRepository;
     private final DepositRepository depositRepository;
+    private final UserRepository userRepository;
 
 
-    public TransactionService(SaleRepository saleRepository, DepositRepository depositRepository) {
+    public TransactionService(SaleRepository saleRepository, DepositRepository depositRepository, UserRepository userRepository) {
         this.saleRepository = saleRepository;
         this.depositRepository = depositRepository;
+        this.userRepository = userRepository;
     }
 
 
@@ -60,4 +65,34 @@ public class TransactionService {
 
         return history;
     }
+
+    public List<UserBalanceDTO> getALLUsersBalanceAtDate(LocalDateTime start) {
+        LocalDateTime actualStart = (start == null) ? LocalDateTime.now().minusYears(10) : start;
+        LocalDateTime actualEnd = LocalDateTime.now();
+
+        List<UserBalanceDTO> returnList = new ArrayList<>();
+
+        userRepository.findAll().forEach(user -> {
+            // 1. Daten laden
+            List<Sale> sales = saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(user, actualStart, actualEnd);
+            List<Deposit> deposits = depositRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(user, actualStart, actualEnd);
+
+            int allSales = sales.stream().map(Sale::getPrice).mapToInt(Integer::intValue).sum();
+            int allDeposits = deposits.stream().map(Deposit::getAmount).mapToInt(Integer::intValue).sum();
+
+            // Vom aktuellen Kontostand zurück zu einem Wunschdatum =
+
+            returnList.add(
+                    new UserBalanceDTO(user.getId(), user.getUsername(),
+                            user.getBalance() + allSales - allDeposits));
+
+        });
+
+
+        // 4. Sortieren: Neueste zuerst
+        returnList.sort(Comparator.comparing(UserBalanceDTO::username));
+        return returnList;
+    }
+
+
 }
