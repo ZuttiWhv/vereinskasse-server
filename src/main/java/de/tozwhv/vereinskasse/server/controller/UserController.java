@@ -1,10 +1,8 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
-import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.UserService;
@@ -12,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -64,7 +62,6 @@ public class UserController {
         User updatedUser = userService.updateUser(id, dto);
         return ResponseEntity.ok(updatedUser);
     }
-
 
 
     @GetMapping("/me")

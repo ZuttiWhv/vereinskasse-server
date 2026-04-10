@@ -1,7 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.AppSettingsDTO;
-import de.tozwhv.vereinskasse.server.repository.SettingsRepository;
 import de.tozwhv.vereinskasse.server.service.AppSettingsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,7 +13,7 @@ public class SettingsController {
 
     private final AppSettingsService appSettingsService;
 
-    public SettingsController( AppSettingsService appSettingsService) {
+    public SettingsController(AppSettingsService appSettingsService) {
         this.appSettingsService = appSettingsService;
     }
 

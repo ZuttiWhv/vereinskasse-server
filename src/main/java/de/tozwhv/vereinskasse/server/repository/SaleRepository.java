@@ -15,11 +15,13 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     // Holt alle Sales eines Users, sortiert nach Datum (Neu zu Alt)
     List<Sale> findByUserOrderByCreatedAtDesc(User user);
+
     List<Sale> findAllByOrderByCreatedAtDesc();
+
     // Holt alle Sales einen Users , gefiltert nach Start- und Enddatum , sortiert nach Datum (Neu zu Alt)
     List<Sale> findAllByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
-    List<Sale> findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(User user, LocalDateTime start, LocalDateTime end);
 
+    List<Sale> findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(User user, LocalDateTime start, LocalDateTime end);
 
 
 }

@@ -35,6 +35,7 @@ public class SaleService {
                 .map(this::convertToDTO)
                 .toList();
     }
+
     private SaleDTO convertToDTO(Sale sale) {
         return new SaleDTO(
                 sale.getId(),

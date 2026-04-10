@@ -9,4 +9,5 @@ public record TransactionDTO(
         int amount, // Achtung: Preis pro Stück oder Gesamt? Siehe unten.
         int totalPrice, // Wir brauchen das für dein Frontend!
         LocalDateTime date
-) {}
+) {
+}

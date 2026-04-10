@@ -19,17 +19,18 @@ public class FileStorageService {
 
     public String storeFile(MultipartFile file) {
         try {
-        Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
-        if (!Files.exists(root)) {
-            Files.createDirectories(root);
-        }
+            Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
+            if (!Files.exists(root)) {
+                Files.createDirectories(root);
+            }
 
-        // Dateiname generieren (UUID zur Vermeidung von Duplikaten/Cache-Problemen)
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path target = root.resolve(fileName);
-        Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        return fileName;
-    }  catch (IOException _) {
-       return null;
+            // Dateiname generieren (UUID zur Vermeidung von Duplikaten/Cache-Problemen)
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path target = root.resolve(fileName);
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            return fileName;
+        } catch (IOException _) {
+            return null;
+        }
     }
-}}
+}

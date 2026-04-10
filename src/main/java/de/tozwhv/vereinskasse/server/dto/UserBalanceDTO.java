@@ -4,4 +4,5 @@ public record UserBalanceDTO(
         Long userId,
         String username,
         Long balanceInCents
-) {}
+) {
+}

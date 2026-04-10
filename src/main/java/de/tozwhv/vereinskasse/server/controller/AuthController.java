@@ -38,9 +38,6 @@ public class AuthController {
         private String refreshToken;
     }
 
-    @Data
-    public static class AuthResponse {
-        private final String accessToken;
-        private final String refreshToken;
+    public record AuthResponse(String accessToken, String refreshToken) {
     }
 }

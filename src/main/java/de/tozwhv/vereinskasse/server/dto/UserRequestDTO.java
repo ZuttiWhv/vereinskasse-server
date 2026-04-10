@@ -8,4 +8,5 @@ public record UserRequestDTO(
         List<Long> roleIds,
         Integer pin,
         Integer balance
-) {}
+) {
+}
