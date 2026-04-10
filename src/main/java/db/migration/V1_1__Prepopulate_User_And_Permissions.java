@@ -15,7 +15,7 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         var connection = context.getConnection();
 
         // -----------------------------
-        // Permissions
+        // CREATE Permissions
         // -----------------------------
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO permission (name) VALUES (?)")) {
@@ -75,7 +75,7 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
 
 
         // -----------------------------
-        // Roles
+        // CREATE Roles
         // -----------------------------
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO ROLE (name) VALUES (?) ")) {
@@ -86,7 +86,7 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         }
 
         // -----------------------------
-        // Admin User
+        // CREATE Admin User
         // -----------------------------
         // Prüfen, ob Admin schon existiert
         try (PreparedStatement check = connection.prepareStatement(
@@ -112,7 +112,6 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         // -----------------------------
         // Optional: Zuordnungen Rollen & Groups
         // -----------------------------
-        // Hier kannst du SQL einfügen, um Admin-User direkt zu ROLE_ADMIN und ADMIN_GROUP zuzuordnen
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO user_roles (user_id, role_id) " +
                         "SELECT u.id, r.id FROM users u, role r WHERE u.username='admin' AND r.name='ADMIN' ")) {
@@ -121,11 +120,33 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
 
 
         // -----------------------------
-        // Optional: Admin Group bekommt alle Permissions
+        // Admin-Rolle bekommt alle Permissions
         // -----------------------------
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
                         "SELECT role.id, permission.id FROM role, permission WHERE role.name='ADMIN' ")) {
+            stmt.executeUpdate();
+        }
+
+        // -----------------------------
+        // User-Rolle bekommt notwendige Permissions
+        // -----------------------------
+        String[] userPermissions = {
+                "READ_OWN_SALES",
+                "READ_PRODUCT",
+                "READ_CATEGORY",
+                "WRITE_OWN_SALES"
+        };
+
+        String sql = "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
+                "SELECT r.id, p.id FROM role r, permission p " +
+                "WHERE r.name = 'USER' AND p.name IN (?, ?, ?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, userPermissions[0]);
+            stmt.setString(2, userPermissions[1]);
+            stmt.setString(3, userPermissions[2]);
+            stmt.setString(4, userPermissions[3]);
             stmt.executeUpdate();
         }
     }
