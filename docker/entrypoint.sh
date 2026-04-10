@@ -1,12 +1,12 @@
 #!/bin/sh
 
 # Pfad zum Keystore
-KEYSTORE_PATH="/vereinskasse/server/certs/keystore.p12"
+KEYSTORE_PATH="/vereinskasse/server/data/certs/keystore.p12"
 PASSWORD=${SSL_PASSWORD:-PLEASE123SET456inEnv$$$$$} # Nutzt Umgebungsvariable oder Default
 
 if [ ! -f "$KEYSTORE_PATH" ]; then
     echo "Kein SSL-Zertifikat gefunden. Generiere neues Zertifikat..."
-    mkdir -p /vereinskasse/server/certs
+    mkdir -p /vereinskasse/server/data/certs
 
     # Generiert einen selbstsignierten Keystore
     keytool -genkeypair \
