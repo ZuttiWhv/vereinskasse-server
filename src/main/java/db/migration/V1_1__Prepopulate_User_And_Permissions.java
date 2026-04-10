@@ -6,6 +6,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 
 public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
 
@@ -71,6 +73,9 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
 
             stmt.setString(1, "WRITE_SETTINGS");
             stmt.executeUpdate();
+
+            stmt.setString(1, "READ_ALL_BALANCES");
+            stmt.executeUpdate();
         }
 
 
@@ -82,6 +87,8 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.setString(1, "USER");
             stmt.executeUpdate();
             stmt.setString(1, "ADMIN");
+            stmt.executeUpdate();
+            stmt.setString(1, "KASSENWART");
             stmt.executeUpdate();
         }
 
@@ -129,26 +136,48 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         }
 
         // -----------------------------
-        // User-Rolle bekommt notwendige Permissions
+        // User-Rolle und KASSENWART-Rolle bekommen Mindest-Permissions
         // -----------------------------
-        String[] userPermissions = {
+        List<String> defaultPermissions = new ArrayList<>(List.of(
                 "READ_OWN_SALES",
-                "READ_PRODUCT",
-                "READ_CATEGORY",
-                "WRITE_OWN_SALES"
-        };
+                "READ_PRODUCTS",
+                "READ_CATEGORIES",
+                "CREATE_SALE"
+        ));
 
         String sql = "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
                 "SELECT r.id, p.id FROM role r, permission p " +
-                "WHERE r.name = 'USER' AND p.name IN (?, ?, ?, ?)";
+                "WHERE r.name IN ('KASSENWART' AND 'USER')" +
+                "AND p.name IN (?, ?, ?, ?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, userPermissions[0]);
-            stmt.setString(2, userPermissions[1]);
-            stmt.setString(3, userPermissions[2]);
-            stmt.setString(4, userPermissions[3]);
+            stmt.setString(1, defaultPermissions.get(0));
+            stmt.setString(1, defaultPermissions.get(2));
+            stmt.setString(1, defaultPermissions.get(3));
+            stmt.setString(1, defaultPermissions.get(1));
             stmt.executeUpdate();
         }
+
+        List<String> kassenwartPerms = new ArrayList<>(List.of(
+                "READ_ALL_BALANCES",
+                "WRITE_USERS"
+        ));
+
+        // -----------------------------
+        // Kassenwart-Rolle bekommt zusätlich notwendige Permissions
+        // -----------------------------
+        sql = "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
+                "SELECT r.id, p.id FROM role r, permission p " +
+                "WHERE r.name = 'KASSENWART' " +
+                "AND p.name IN (?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, kassenwartPerms.get(0));
+            stmt.setString(1, kassenwartPerms.get(1));
+            stmt.executeUpdate();
+        }
+
+
     }
 }
 
