@@ -69,7 +69,7 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.setString(1, "UPLOAD_IMAGES");
             stmt.executeUpdate();
 
-            stmt.setString(1, "WRITE_SETTINGS_DESIGN");
+            stmt.setString(1, "WRITE_SETTINGS");
             stmt.executeUpdate();
         }
 

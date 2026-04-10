@@ -1,28 +1,31 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.AppSettingsDTO;
-import de.tozwhv.vereinskasse.server.modell.AppSettings;
 import de.tozwhv.vereinskasse.server.repository.SettingsRepository;
+import de.tozwhv.vereinskasse.server.service.AppSettingsService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/api/settings")
 public class SettingsController {
 
-    private final SettingsRepository settingsRepository;
+    private final AppSettingsService appSettingsService;
 
-    public SettingsController(SettingsRepository settingsRepository) {
-        this.settingsRepository = settingsRepository;
+    public SettingsController( AppSettingsService appSettingsService) {
+        this.appSettingsService = appSettingsService;
     }
 
     @GetMapping()
     public ResponseEntity<AppSettingsDTO> getSettings() {
-        AppSettings s = settingsRepository.findById(1L).orElse(new AppSettings());
-        return ResponseEntity.ok(new AppSettingsDTO(
-                s.getPrimaryColor(), s.getSecondaryColor(), s.getLogoPath(), s.getVereinName()
-        ));
+        return ResponseEntity.ok(appSettingsService.getSettings());
+    }
+
+    @PutMapping
+    @PreAuthorize("hasAuthority('WRITE_SETTINGS')")
+    public ResponseEntity<AppSettingsDTO> updateSettings(@RequestBody AppSettingsDTO dto) {
+        return ResponseEntity.ok(appSettingsService.updateSettings(dto));
     }
 }
