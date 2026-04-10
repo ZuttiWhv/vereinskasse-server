@@ -39,6 +39,7 @@ public class AppSettingsService {
         // Werte vom DTO in die Entity übertragen
         s.setPrimaryColor(dto.primaryColor());
         s.setSecondaryColor(dto.secondaryColor());
+        s.setNavTextColor(dto.navTextColor());
         s.setVereinName(dto.vereinName());
         s.setLogoPath(dto.logoPath());
 
@@ -55,6 +56,7 @@ public class AppSettingsService {
         return new AppSettingsDTO(
                 s.getPrimaryColor(),
                 s.getSecondaryColor(),
+                s.getNavTextColor(),
                 s.getLogoPath(),
                 s.getVereinName()
         );

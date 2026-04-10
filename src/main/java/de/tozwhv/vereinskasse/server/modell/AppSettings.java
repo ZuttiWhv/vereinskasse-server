@@ -18,11 +18,13 @@ public class AppSettings {
     private String secondaryColor;
     private String logoPath;
     private String vereinName;
+    private String navTextColor;
 
     // Standardwerte im Konstruktor
     public AppSettings() {
         this.primaryColor = "#2563eb"; // Standard Blau
         this.secondaryColor = "#1e40af";
         this.vereinName = "Vereinskasse";
+        this.navTextColor = "#ffffff";
     }
 }
