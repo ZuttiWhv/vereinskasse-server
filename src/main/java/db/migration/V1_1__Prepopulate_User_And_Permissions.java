@@ -125,7 +125,7 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         // -----------------------------
         try (PreparedStatement stmt = connection.prepareStatement(
                 "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
-                        "SELECT role.id, permission.id FROM role role, permission permission WHERE role.name='ADMIN' ")) {
+                        "SELECT role.id, permission.id FROM role, permission WHERE role.name='ADMIN' ")) {
             stmt.executeUpdate();
         }
     }
