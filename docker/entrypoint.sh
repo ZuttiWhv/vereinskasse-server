@@ -1,12 +1,12 @@
 #!/bin/sh
 
 # Pfad zum Keystore
-KEYSTORE_PATH="/app/certs/keystore.p12"
+KEYSTORE_PATH="/vereinskasse/server/certs/keystore.p12"
 PASSWORD=${SSL_PASSWORD:-PLEASE123SET456inEnv$$$$$} # Nutzt Umgebungsvariable oder Default
 
 if [ ! -f "$KEYSTORE_PATH" ]; then
     echo "Kein SSL-Zertifikat gefunden. Generiere neues Zertifikat..."
-    mkdir -p /app/certs
+    mkdir -p /vereinskasse/server/certs
 
     # Generiert einen selbstsignierten Keystore
     keytool -genkeypair \
@@ -26,4 +26,4 @@ else
 fi
 
 # Startet die Java-Anwendung
-exec java -jar /app/app.jar
+exec java -jar /vereinskasse/server/app.jar
