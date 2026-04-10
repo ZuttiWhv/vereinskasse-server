@@ -1,7 +1,11 @@
 CREATE TABLE app_settings (
-                          setting_key VARCHAR(50) PRIMARY KEY,
-                          setting_value VARCHAR(255)
+                              id BIGINT PRIMARY KEY,
+                              primary_color VARCHAR(10) NOT NULL,
+                              secondary_color VARCHAR(10) NOT NULL,
+                              logo_path VARCHAR(255),
+                              verein_name VARCHAR(100) NOT NULL
 );
 
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('primary_color', '#2563eb');
-INSERT INTO app_settings (setting_key, setting_value) VALUES ('logo_path', '/uploads/logo_default.png');
+-- Den ersten Datensatz direkt anlegen
+INSERT INTO app_settings (id, primary_color, secondary_color, verein_name)
+VALUES (1, '#2563eb', '#1e40af', 'Vereinskasse');
