@@ -25,7 +25,7 @@ jobs:
         run: ./gradlew clean bootJar # Erzeugt das ausführbare JAR in build/libs/
 
       - name: Prepare Docker Context
-        run: cp build/libs/*.jar server.jar && cp docker/DOCKERFILE . && cp docker/entrypoint.sh .
+        run: cp build/libs/*.jar server.jar && cp docker/Dockerfile . && cp docker/entrypoint.sh .
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
