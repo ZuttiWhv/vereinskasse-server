@@ -1,22 +1,22 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import de.tozwhv.vereinskasse.server.dto.SaleRequestDTO;
-import de.tozwhv.vereinskasse.server.service.SaleService;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.*;
 import de.tozwhv.vereinskasse.server.dto.SaleDTO;
+import de.tozwhv.vereinskasse.server.dto.SaleRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
+import de.tozwhv.vereinskasse.server.service.SaleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -38,7 +38,6 @@ public class SaleController {
         this.userRepository = userRepository;
         this.saleService = saleService;
     }
-
 
 
     @GetMapping
@@ -71,7 +70,7 @@ public class SaleController {
             Authentication authentication) { // currentUser entfernt, wir laden ihn selbst
 
         // 1. Validierung
-        if ( dto.amount() <= 0) {
+        if (dto.amount() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültige Daten.");
         }
 

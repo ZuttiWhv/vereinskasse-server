@@ -3,10 +3,7 @@ package de.tozwhv.vereinskasse.server.controller;
 import de.tozwhv.vereinskasse.server.dto.TransactionDTO;
 import de.tozwhv.vereinskasse.server.dto.UserBalanceDTO;
 import de.tozwhv.vereinskasse.server.modell.User;
-import de.tozwhv.vereinskasse.server.repository.ProductRepository;
-import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
-import de.tozwhv.vereinskasse.server.service.SaleService;
 import de.tozwhv.vereinskasse.server.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,30 +24,28 @@ import java.util.List;
 
 public class AccountingController {
 
-        private final TransactionService transactionService;
-        private final UserRepository userRepository;
+    private final TransactionService transactionService;
+    private final UserRepository userRepository;
 
 
-        @Autowired
-        public AccountingController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository, SaleService saleService, TransactionService transactionService, UserRepository userRepository1) {
-            this.transactionService = transactionService;
-            this.userRepository = userRepository1;
-        }
+    @Autowired
+    public AccountingController(TransactionService transactionService, UserRepository userRepository) {
+        this.transactionService = transactionService;
+        this.userRepository = userRepository;
+    }
 
 
-
-        @GetMapping
-        @PreAuthorize("hasAuthority('READ_OWN_SALES')")
-        public List<TransactionDTO> getUserTransactions(
-                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
-                Authentication authentication)
-        {
-            // 1. Den User anhand des Namens aus dem Security-Kontext laden
-            User user = userRepository.findByUsername(authentication.getName())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
-            return transactionService.getUserHistory(user, start, end);
-        }
+    @GetMapping
+    @PreAuthorize("hasAuthority('READ_OWN_SALES')")
+    public List<TransactionDTO> getUserTransactions(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            Authentication authentication) {
+        // 1. Den User anhand des Namens aus dem Security-Kontext laden
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
+        return transactionService.getUserHistory(user, start, end);
+    }
 
 
     @GetMapping("/balances")

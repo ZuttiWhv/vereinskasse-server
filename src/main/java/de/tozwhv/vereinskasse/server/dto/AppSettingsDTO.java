@@ -6,4 +6,5 @@ public record AppSettingsDTO(
         String navTextColor,
         String logoPath,
         String vereinName
-) {}
+) {
+}

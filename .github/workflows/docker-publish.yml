@@ -1,0 +1,47 @@
+name: Docker Multi-Arch Build (Gradle)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle' # Automatische Cache-Verwaltung für Gradle-Abhängigkeiten
+
+      - name: Build with Gradle
+        run: ./gradlew clean bootJar # Erzeugt das ausführbare JAR in build/libs/
+
+      - name: Prepare Docker Context
+        run: cp build/libs/*.jar server.jar && cp docker/DOCKERFILE . && cp docker/entrypoint.sh .
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse:${{ github.sha }}

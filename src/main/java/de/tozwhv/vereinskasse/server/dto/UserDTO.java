@@ -9,6 +9,6 @@ public record UserDTO(
         long balance,
         Set<String> roles,
         Set<String> authorities
-){
+) {
 
 }
