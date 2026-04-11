@@ -3,7 +3,7 @@ FROM eclipse-temurin:25.0.2_10-jdk
 WORKDIR /vereinskasse/server
 
 # Kopiere das gebaute Jar
-COPY target/*.jar app.jar
+COPY *.jar server.jar
 # Kopiere das Einstiegsskript
 COPY entrypoint.sh .
 
