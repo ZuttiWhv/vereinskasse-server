@@ -2,17 +2,23 @@ version: '3.8'
 
 services:
   backend:
-    image: zuttiwhv/vereinskasse-backend${VERSION_SUFFIX}:latest
-    container_name: vereinskasse-backend
-    restart: always
+    image: zuttiwhv/vereinskasse-server${VERSION_SUFFIX}:latest
+    container_name: vereinskasse-server
+    restart: on-failure:3
     ports:
       - "8443:8443"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - JWT_SECRET=${JWT_SECRET}
-      - SSL_PASSWORD=${SSL_PASSWORD}
+      # Gib die Variablen nur weiter, wenn sie auf dem Host existieren
+      - JWT_SECRET
+      - SSL_PASSWORD
+      - DB_URL
+      - DB_USER
+      - DB_PASSWORD
+      - SERVER_PORT
+      - SSL_KEYSTORE_PATH
+      - UPLOAD_DIR
     volumes:
-      # Wir nutzen jetzt relative Pfade statt Named Volumes
+      # Host-Pfad (links) : Container-Pfad (rechts)
       - ./data:/app/data
       - ./certs-backend:/app/certs
-
