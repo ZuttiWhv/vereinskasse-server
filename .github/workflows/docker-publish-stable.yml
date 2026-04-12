@@ -1,4 +1,4 @@
-name: Docker Multi-Arch Build (Gradle)
+name: Docker Multi-Arch Build Stable
 
 on:
   push:
@@ -46,5 +46,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse-server:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/vereinskasse-server:${{ github.sha }}
