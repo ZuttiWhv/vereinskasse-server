@@ -138,30 +138,17 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         // -----------------------------
         // User-Rolle und KASSENWART-Rolle bekommen Mindest-Permissions
         // -----------------------------
-        List<String> defaultPermissions = new ArrayList<>(List.of(
-                "READ_OWN_SALES",
-                "READ_PRODUCTS",
-                "READ_CATEGORIES",
-                "CREATE_SALE"
-        ));
 
         String sql = "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
                 "SELECT r.id, p.id FROM role r, permission p " +
-                "WHERE r.name IN ('KASSENWART' AND 'USER')" +
-                "AND p.name IN (?, ?, ?, ?)";
+                "WHERE r.name IN ('KASSENWART','USER')" +
+                "AND p.name IN ('READ_OWN_SALES','READ_PRODUCTS', 'READ_CATEGORIES', 'CREATE_SALE')";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, defaultPermissions.get(0));
-            stmt.setString(1, defaultPermissions.get(2));
-            stmt.setString(1, defaultPermissions.get(3));
-            stmt.setString(1, defaultPermissions.get(1));
             stmt.executeUpdate();
         }
 
-        List<String> kassenwartPerms = new ArrayList<>(List.of(
-                "READ_ALL_BALANCES",
-                "WRITE_USERS"
-        ));
+
 
         // -----------------------------
         // Kassenwart-Rolle bekommt zusätlich notwendige Permissions
@@ -169,11 +156,9 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
         sql = "INSERT INTO ROLE_PERMISSION (role_id, permission_id) " +
                 "SELECT r.id, p.id FROM role r, permission p " +
                 "WHERE r.name = 'KASSENWART' " +
-                "AND p.name IN (?, ?)";
+                "AND p.name IN ('READ_ALL_BALANCES', 'WRITE_USERS')";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, kassenwartPerms.get(0));
-            stmt.setString(1, kassenwartPerms.get(1));
             stmt.executeUpdate();
         }
 

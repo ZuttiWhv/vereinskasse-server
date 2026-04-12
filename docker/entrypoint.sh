@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Pfade auf dem persistenten Volume
-CONFIG_DIR="/vereinskasse/server/data/config"
+# 1. ABSOLUTE PFADE (Container-Sicht)
+CONFIG_DIR="/app/data/config"
 JWT_KEY_FILE="$CONFIG_DIR/jwt.secret"
 mkdir -p "$CONFIG_DIR"
 
@@ -13,7 +13,6 @@ if [ -z "$JWT_SECRET" ]; then
     else
         echo "Kein JWT_SECRET gesetzt. Generiere neuen sicheren Schlüssel..."
         # Generiert 64 zufällige Bytes und kodiert sie als Base64 (sicher für JJWT)
-        # Wir nutzen /dev/urandom für echte Zufallszahlen
         JWT_SECRET=$(head -c 64 /dev/urandom | base64 | tr -d '\n')
         echo "$JWT_SECRET" > "$JWT_KEY_FILE"
         echo "Neuer Schlüssel wurde in $JWT_KEY_FILE gespeichert."
@@ -23,13 +22,18 @@ fi
 # Exportiere die Variable, damit Spring Boot sie sieht
 export JWT_SECRET
 
-# Pfad zum Keystore
-KEYSTORE_PATH="/vereinskasse/server/data/certs/keystore.p12"
-PASSWORD=${SSL_PASSWORD:-PLEASE123SET456inEnv$$$$$} # Nutzt Umgebungsvariable oder Default
+# 2. PFAD ZUM KEYSTORE: Korrekte Syntax (:-) und absoluter Mount-Pfad
+# Aus deiner Compose-Datei: Volume ./certs-backend liegt auf /app/certs
+KEYSTORE_PATH=${SSL_KEYSTORE_PATH:-/app/certs/keystore.p12}
+
+# 3. SICHERES DEFAULT PASSWORT (ohne Shell-Sonderzeichen)
+PASSWORD=${SSL_PASSWORD:-KeystorePasswort123}
 
 if [ ! -f "$KEYSTORE_PATH" ]; then
     echo "Kein SSL-Zertifikat gefunden. Generiere neues Zertifikat..."
-    mkdir -p /vereinskasse/server/data/certs
+
+    # 4. BUGFIX: Erstelle nur das Verzeichnis (z.B. /app/certs), nicht die p12-Datei als Verzeichnis!
+    mkdir -p "$(dirname "$KEYSTORE_PATH")"
 
     # Generiert einen selbstsignierten Keystore
     keytool -genkeypair \
@@ -48,5 +52,6 @@ else
     echo "Vorhandenes Zertifikat wird verwendet."
 fi
 
-# Startet die Java-Anwendung
+# 5. Startet die Java-Anwendung
+# WICHTIG: Dieser Pfad muss exakt dem Pfad in deinem Dockerfile entsprechen!
 exec java -jar /vereinskasse/server/server.jar

@@ -1,0 +1,24 @@
+services:
+  backend:
+    image: zuttiwhv/vereinskasse-server-dev:latest
+    container_name: vereinskasse-server
+    restart: on-failure:3
+    ports:
+      # Ändern wenn nötig... Dann in Environment auch anpassen
+      - "8443:8443"
+    environment:
+      # Nicht ändern außer du bist wirklich sicher was und warum du tust:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_URL=jdbc:h2:file:/app/data/vereinskasse
+      - UPLOAD_DIR=/app/data/media
+      #Bitte unbedingt ändern:
+      - JWT_SECRET=HierSollteEinEigenesGeheimesKennwortmitWenigstens64AlphanumerischenZeichenHin
+      - SSL_PASSWORD=HiermitWerdenDieSSLZertifikateGesichert
+      - DB_USER=vereinskasse_DB_user
+      - DB_PASSWORD=vereinskasse_DB_passwort
+      # Ändern wenn nötig... Dann oben bei Ports auch anpassen
+      - SERVER_PORT=8443
+    volumes:
+      # Host-Pfad (links) : Container-Pfad (rechts)
+      - ./data:/app/data
+      - ./certs:/app/certs
