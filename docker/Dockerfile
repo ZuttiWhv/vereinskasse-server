@@ -12,7 +12,7 @@ RUN chmod +x entrypoint.sh
 # Port 8443 für HTTPS öffnen
 EXPOSE 8443
 
-# Volumen für Zertifikate (damit sie beim Container-Update erhalten bleiben)
-VOLUME /vereinskasse/server/data
+# Volumen deklarieren (an die Compose-Pfade angepasst!)
+VOLUME ["/app/data", "/app/certs"]
 
 ENTRYPOINT ["./entrypoint.sh"]
