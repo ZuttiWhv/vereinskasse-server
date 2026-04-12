@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  backend:
+    image: zuttiwhv/vereinskasse-backend:latest
+    container_name: vereinskasse-backend
+    restart: always
+    ports:
+      - "8443:8443"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JWT_SECRET=${JWT_SECRET}
+      - SSL_PASSWORD=${SSL_PASSWORD}
+    volumes:
+      # Wir nutzen jetzt relative Pfade statt Named Volumes
+      - ./data:/app/data
+      - ./certs-backend:/app/certs
+
