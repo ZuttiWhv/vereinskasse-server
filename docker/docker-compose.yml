@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: zuttiwhv/vereinskasse-backend:latest
+    image: zuttiwhv/vereinskasse-backend${VERSION_SUFFIX}:latest
     container_name: vereinskasse-backend
     restart: always
     ports:
