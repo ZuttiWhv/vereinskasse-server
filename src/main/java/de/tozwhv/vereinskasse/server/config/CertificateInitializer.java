@@ -28,7 +28,7 @@ public class CertificateInitializer implements ApplicationRunner {
     @Value("${app.ca-alias}")
     private String caAlias;
 
-    @Value("${server.ssl.key-store-password}")
+    @Value("${server.ssl.key-store}")
     private String keystorePath;
 
     @Value("${server.ssl.key-store-password}")

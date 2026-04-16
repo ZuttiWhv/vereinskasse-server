@@ -22,20 +22,27 @@ import java.util.Date;
 
 @Service
 public class DeviceCertificateService {
-    @Value(value = "${server.ssl.trust-store}")
-    private String trustStoreFile;
 
-    @Value(value = "${server.ssl.trust-store-password}")
-    private String trustStorePassword;
-    @Value("${app.ca-alias}")
-    private String caAlias;
+    private final String keyStoreFile;
+    private final char[] keystorePass;
+    private final String caAlias;
 
-    private final char[] keystorePass = trustStorePassword.toCharArray();
+    // Spring füllt die Parameter automatisch aus den Properties
+    public DeviceCertificateService(
+            @Value("${server.ssl.key-store}") String keyStoreFile,
+            @Value("${server.ssl.key-store-password}") String keyStorePassword,
+            @Value("${app.ca-alias}") String caAlias) {
+
+        this.keyStoreFile = keyStoreFile.replace("file:", ""); // Falls Präfix vorhanden
+        this.keystorePass = keyStorePassword.toCharArray();
+        this.caAlias = caAlias;
+    }
+
 
     public byte[] createDeviceCertificate(String deviceName) throws Exception {
         // 1. Laden der CA aus dem vorhandenen Keystore
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
-        keyStore.load(new FileInputStream(trustStoreFile), keystorePass);
+        keyStore.load(new FileInputStream(keyStoreFile), keystorePass);
 
 
         KeyStore.PrivateKeyEntry caEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(
