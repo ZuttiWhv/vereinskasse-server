@@ -6,10 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/devices")
@@ -32,5 +29,15 @@ public class DeviceRegistrationController {
         } catch (Exception _) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    @GetMapping("/ca-public")
+    public ResponseEntity<byte[]> getPublicCA() throws Exception {
+        byte[] caBytes = certService.getPublicCACertificate();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Vereinskasse_Root_CA.crt\"")
+                // Offizieller MIME-Type für X.509 Zertifikate
+                .contentType(MediaType.parseMediaType("application/x-x509-ca-cert"))
+                .body(caBytes);
     }
 }
