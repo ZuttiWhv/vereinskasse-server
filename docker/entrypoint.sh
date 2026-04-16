@@ -12,46 +12,102 @@ if [ -z "$JWT_SECRET" ]; then
         JWT_SECRET=$(cat "$JWT_KEY_FILE")
     else
         echo "Kein JWT_SECRET gesetzt. Generiere neuen sicheren Schlüssel..."
-        # Generiert 64 zufällige Bytes und kodiert sie als Base64 (sicher für JJWT)
         JWT_SECRET=$(head -c 64 /dev/urandom | base64 | tr -d '\n')
         echo "$JWT_SECRET" > "$JWT_KEY_FILE"
         echo "Neuer Schlüssel wurde in $JWT_KEY_FILE gespeichert."
     fi
 fi
 
-# Exportiere die Variable, damit Spring Boot sie sieht
 export JWT_SECRET
 
-# 2. PFAD ZUM KEYSTORE: Korrekte Syntax (:-) und absoluter Mount-Pfad
-# Aus deiner Compose-Datei: Volume ./certs-backend liegt auf /app/certs
+# 2. SSL PFADE & ALIASE
 KEYSTORE_PATH=${SSL_KEYSTORE_PATH:-/app/certs/keystore.p12}
-
-# 3. SICHERES DEFAULT PASSWORT (ohne Shell-Sonderzeichen)
 PASSWORD=${SSL_PASSWORD:-KeystorePasswort123}
+CA_ALIAS=${APP_CA_ALIAS:-vereinskasse-ca}
+SERVER_ALIAS="vereinskasse-server"
 
 if [ ! -f "$KEYSTORE_PATH" ]; then
-    echo "Kein SSL-Zertifikat gefunden. Generiere neues Zertifikat..."
-
-    # 4. BUGFIX: Erstelle nur das Verzeichnis (z.B. /app/certs), nicht die p12-Datei als Verzeichnis!
+    echo "Kein SSL-Keystore gefunden. Starte PKI-Initialisierung..."
     mkdir -p "$(dirname "$KEYSTORE_PATH")"
 
-    # Generiert einen selbstsignierten Keystore
+    # --- SCHRITT A: Root-CA generieren ---
+    # Manche Versionen wollen 'ca:true', manche 'ca=true'.
+    # Wir nutzen hier die stabilste Variante:
     keytool -genkeypair \
-      -alias vereinskasse \
+      -alias "$CA_ALIAS" \
       -keyalg RSA \
       -keysize 4096 \
+      -ext "bc=ca:true" \
+      -ext "ku=keyCertSign,cRLSign" \
       -validity 3650 \
       -keystore "$KEYSTORE_PATH" \
       -storepass "$PASSWORD" \
       -keypass "$PASSWORD" \
-      -dname "CN=vereinskasse.local, OU=Verein, O=Vereinskasse, L=Heim, C=DE" \
+      -dname "CN=Vereinskasse Root CA, O=Verein, C=DE" \
       -storetype PKCS12
 
-    echo "Zertifikat wurde unter $KEYSTORE_PATH erstellt."
+    # --- SCHRITT B: Server-Zertifikat generieren ---
+    keytool -genkeypair \
+      -alias "$SERVER_ALIAS" \
+      -keyalg RSA \
+      -keysize 2048 \
+      -validity 1825 \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -keypass "$PASSWORD" \
+      -dname "CN=localhost, OU=Server, O=Vereinskasse, C=DE" \
+      -storetype PKCS12
+
+    # --- SCHRITT C: Signierungsprozess ---
+    echo "Signiere Server-Zertifikat mit Root-CA..."
+
+    # 1. CSR erstellen
+    keytool -certreq \
+      -alias "$SERVER_ALIAS" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/server.csr
+
+    # 2. CSR signieren
+    keytool -gencert \
+      -alias "$CA_ALIAS" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -infile /tmp/server.csr \
+      -outfile /tmp/server.crt \
+      -validity 1825 \
+      -ext "ku=digitalSignature,keyEncipherment" \
+      -ext "eku=serverAuth"
+
+    # 3. CA-Zertifikat exportieren
+    keytool -exportcert \
+      -alias "$CA_ALIAS" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/ca.crt
+
+    # 4. Kette importieren
+    # CA als Trust-Anchor
+    keytool -importcert \
+      -alias "${CA_ALIAS}-trust" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/ca.crt \
+      -noprompt
+
+    # Signiertes Server-Zertifikat importieren
+    keytool -importcert \
+      -alias "$SERVER_ALIAS" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/server.crt \
+      -noprompt
+
+    rm /tmp/server.csr /tmp/server.crt /tmp/ca.crt
+    echo "Zertifikate erfolgreich unter $KEYSTORE_PATH erstellt."
 else
-    echo "Vorhandenes Zertifikat wird verwendet."
+    echo "Vorhandener Keystore wird verwendet."
 fi
 
 # 5. Startet die Java-Anwendung
-# WICHTIG: Dieser Pfad muss exakt dem Pfad in deinem Dockerfile entsprechen!
 exec java -jar /vereinskasse/server/server.jar

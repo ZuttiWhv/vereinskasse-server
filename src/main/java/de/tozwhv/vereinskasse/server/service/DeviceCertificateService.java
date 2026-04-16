@@ -1,6 +1,9 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -15,69 +18,78 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
-import java.security.PrivateKey;
+
 import java.security.cert.X509Certificate;
 import java.util.Date;
-
 
 @Service
 public class DeviceCertificateService {
 
-    private final String keyStoreFile;
-    private final char[] keystorePass;
+    private final String keystorePath;
+    private final char[] keystorePassword;
     private final String caAlias;
 
-    // Spring füllt die Parameter automatisch aus den Properties
     public DeviceCertificateService(
-            @Value("${server.ssl.key-store}") String keyStoreFile,
-            @Value("${server.ssl.key-store-password}") String keyStorePassword,
-            @Value("${app.ca-alias}") String caAlias) {
+            @Value("${server.ssl.key-store}") String keystorePath,
+            @Value("${server.ssl.key-store-password}") String keystorePassword,
+            @Value("${app.ca-alias:vereinskasse-ca}") String caAlias) {
 
-        this.keyStoreFile = keyStoreFile.replace("file:", ""); // Falls Präfix vorhanden
-        this.keystorePass = keyStorePassword.toCharArray();
+        // Spring reicht den Pfad oft mit "file:" Präfix rein -> für Java File API entfernen
+        this.keystorePath = keystorePath.replace("file:", "");
+        this.keystorePassword = keystorePassword.toCharArray();
         this.caAlias = caAlias;
     }
 
-
     public byte[] createDeviceCertificate(String deviceName) throws Exception {
-        // 1. Laden der CA aus dem vorhandenen Keystore
+        // 1. Keystore laden
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
-        keyStore.load(new FileInputStream(keyStoreFile), keystorePass);
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+            keyStore.load(fis, keystorePassword);
+        }
 
-
+        // 2. Den CA-Eintrag holen (den dein Shell-Skript erstellt hat)
         KeyStore.PrivateKeyEntry caEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(
-                caAlias, new KeyStore.PasswordProtection(keystorePass));
+                caAlias, new KeyStore.PasswordProtection(keystorePassword));
 
-        X509Certificate caCert = (X509Certificate) caEntry.getCertificate();
-        PrivateKey caPrivateKey = caEntry.getPrivateKey();
+        if (caEntry == null) {
+            throw new IllegalStateException("Root-CA mit Alias " + caAlias + " nicht im Keystore gefunden!");
+        }
 
-        // 2. Neues Schlüsselpaar für das Terminal-Gerät erzeugen
+        // 3. Neues Schlüsselpaar für das Terminal (Raspberry Pi) erzeugen
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(4096);
+        keyGen.initialize(2048);
         KeyPair deviceKeyPair = keyGen.generateKeyPair();
 
-        // 3. Zertifikat-Metadaten (Gültigkeit 10 Jahre)
-        X500Name subject = new X500Name("CN=" + deviceName + ", O=Vereinskasse, OU=Terminals");
-        BigInteger serial = BigInteger.valueOf(System.currentTimeMillis());
-        Date notBefore = new Date();
-        Date notAfter = new Date(System.currentTimeMillis() + (10L * 365 * 24 * 60 * 60 * 1000));
+        // 4. Zertifikat für das Terminal erstellen und mit CA signieren
+        X509Certificate caCert = (X509Certificate) caEntry.getCertificate();
+        X500Name issuer = new X500Name(caCert.getSubjectX500Principal().getName());
+        X500Name subject = new X500Name("CN=" + deviceName + ", O=Vereinskasse, C=DE");
 
-        // 4. Zertifikat mit Bouncy Castle signieren
         X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
-                caCert, serial, notBefore, notAfter, subject, deviceKeyPair.getPublic());
+                issuer,
+                BigInteger.valueOf(System.currentTimeMillis()),
+                new Date(),
+                new Date(System.currentTimeMillis() + 157680000000L), // 5 Jahre
+                subject,
+                deviceKeyPair.getPublic());
 
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSA").build(caPrivateKey);
-        X509Certificate deviceCert = new JcaX509CertificateConverter()
-                .getCertificate(certBuilder.build(signer));
+        // Terminals sind keine CAs
+        certBuilder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+        certBuilder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
-        // 5. In ein PKCS12-Bundle (P12) für den Browser-Download verpacken
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSA").build(caEntry.getPrivateKey());
+        X509Certificate deviceCert = new JcaX509CertificateConverter().getCertificate(certBuilder.build(signer));
+
+        // 5. Alles in ein P12-Bundle für den Browser-Download packen
         KeyStore deviceP12 = KeyStore.getInstance("PKCS12");
         deviceP12.load(null, null);
-        deviceP12.setKeyEntry(deviceName, deviceKeyPair.getPrivate(), keystorePass,
+
+        // Die Kette besteht aus: [Terminal-Zertifikat, CA-Zertifikat]
+        deviceP12.setKeyEntry(deviceName, deviceKeyPair.getPrivate(), keystorePassword,
                 new X509Certificate[]{deviceCert, caCert});
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        deviceP12.store(bos, keystorePass);
+        deviceP12.store(bos, keystorePassword);
         return bos.toByteArray();
     }
 }
