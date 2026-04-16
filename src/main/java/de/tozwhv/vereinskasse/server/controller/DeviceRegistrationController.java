@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/devices")
 public class DeviceRegistrationController {
 
-    private DeviceCertificateService certService;
+    private final DeviceCertificateService certService;
+
+    public DeviceRegistrationController(DeviceCertificateService certService) {
+        this.certService = certService;
+    }
 
     @PostMapping("/register")
-    @PreAuthorize("hasRole('DEVICE_WRITE')")
-    public ResponseEntity<byte[]> registerDevice(@RequestBody DeviceRegistrationDTO request) {
-        try {
+    @PreAuthorize("hasAuthority('WRITE_DEVICE')")
+    public ResponseEntity<byte[]> registerDevice(@RequestBody DeviceRegistrationDTO request) throws Exception {
             byte[] p12File = certService.createDeviceCertificate(request.name());
 
             // Datenbank-Logik hier: request.getName() und Zertifikat-Seriennummer speichern
@@ -26,11 +29,10 @@ public class DeviceRegistrationController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + request.name() + ".p12\"")
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(p12File);
-        } catch (Exception _) {
-            return ResponseEntity.internalServerError().build();
-        }
     }
     @GetMapping("/ca-public")
+    @PreAuthorize("hasAuthority('WRITE_DEVICE')")
+    //@PreAuthorize("hasRole('WRITE_DEVICE')")
     public ResponseEntity<byte[]> getPublicCA() throws Exception {
         byte[] caBytes = certService.getPublicCACertificate();
 

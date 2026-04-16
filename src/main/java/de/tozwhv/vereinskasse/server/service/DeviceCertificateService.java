@@ -6,7 +6,9 @@ import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +36,7 @@ public class DeviceCertificateService {
             @Value("${server.ssl.key-store}") String keystorePath,
             @Value("${server.ssl.key-store-password}") String keystorePassword,
             @Value("${app.ca-alias:vereinskasse-ca}") String caAlias,
-            @Value("${server.ssl.key-store-type") String keystoreType) {
+            @Value("${server.ssl.key-store-type}") String keystoreType) {
 
         // Spring reicht den Pfad oft mit "file:" Präfix rein -> für Java File API entfernen
         this.keystorePath = keystorePath.replace("file:", "");
@@ -44,55 +46,88 @@ public class DeviceCertificateService {
     }
 
     public byte[] createDeviceCertificate(String deviceName) throws Exception {
-        // 1. Keystore laden
-        KeyStore keyStore = KeyStore.getInstance(keystoreType);
+        // 1. Keystore laden, um an die Root-CA zu kommen
+        KeyStore keyStore = KeyStore.getInstance("PKCS12");
         try (FileInputStream fis = new FileInputStream(keystorePath)) {
             keyStore.load(fis, keystorePassword);
         }
 
-        // 2. Den CA-Eintrag holen (den dein Shell-Skript erstellt hat)
+        // 2. Den CA-Eintrag holen (Private Key + Zertifikat)
         KeyStore.PrivateKeyEntry caEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(
                 caAlias, new KeyStore.PasswordProtection(keystorePassword));
 
         if (caEntry == null) {
-            throw new IllegalStateException("Root-CA mit Alias " + caAlias + " nicht im Keystore gefunden!");
+            throw new IllegalStateException("Root-CA mit Alias '" + caAlias + "' nicht im Keystore gefunden!");
         }
+
+        X509Certificate caCert = (X509Certificate) caEntry.getCertificate();
 
         // 3. Neues Schlüsselpaar für das Terminal (Raspberry Pi) erzeugen
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048);
         KeyPair deviceKeyPair = keyGen.generateKeyPair();
 
-        // 4. Zertifikat für das Terminal erstellen und mit CA signieren
-        X509Certificate caCert = (X509Certificate) caEntry.getCertificate();
-        X500Name issuer = new X500Name(caCert.getSubjectX500Principal().getName());
+        // 4. Zertifikat für das Terminal konfigurieren
+        X500Name issuer = X500Name.getInstance(caCert.getSubjectX500Principal().getEncoded());
         X500Name subject = new X500Name("CN=" + deviceName + ", O=Vereinskasse, C=DE");
+
+        // Gültigkeit: Ab jetzt für 5 Jahre
+        Date notBefore = new Date();
+        Date notAfter = new Date(System.currentTimeMillis() + (5L * 365 * 24 * 60 * 60 * 1000));
 
         X509v3CertificateBuilder certBuilder = new JcaX509v3CertificateBuilder(
                 issuer,
                 BigInteger.valueOf(System.currentTimeMillis()),
-                new Date(),
-                new Date(System.currentTimeMillis() + 157680000000L), // 5 Jahre
+                notBefore,
+                notAfter,
                 subject,
                 deviceKeyPair.getPublic());
 
-        // Terminals sind keine CAs
+        // --- KRITISCH: Die Chain-Validierung (Extensions) ---
+        JcaX509ExtensionUtils extensionUtils = new JcaX509ExtensionUtils();
+
+        // Verknüpft das Zertifikat eindeutig mit dem Key der CA (Authority Key Identifier)
+        certBuilder.addExtension(Extension.authorityKeyIdentifier, false,
+                extensionUtils.createAuthorityKeyIdentifier(caCert));
+
+        // Erstellt eine ID für den Schlüssel des Geräts selbst (Subject Key Identifier)
+        certBuilder.addExtension(Extension.subjectKeyIdentifier, false,
+                extensionUtils.createSubjectKeyIdentifier(deviceKeyPair.getPublic()));
+
+        // Standard-Constraints: Kein CA, nur digitale Signatur & Verschlüsselung
         certBuilder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
         certBuilder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
+        // 5. Zertifikat signieren mit dem CA-Private-Key
         ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSA").build(caEntry.getPrivateKey());
-        X509Certificate deviceCert = new JcaX509CertificateConverter().getCertificate(certBuilder.build(signer));
+        X509Certificate deviceCert = new JcaX509CertificateConverter()
+                .setProvider(new BouncyCastleProvider()) // Sicherstellen, dass BC genutzt wird
+                .getCertificate(certBuilder.build(signer));
 
-        // 5. Alles in ein P12-Bundle für den Browser-Download packen
+        // 6. Validierung (optional, aber sicher ist sicher)
+        deviceCert.verify(caCert.getPublicKey());
+
+        // 7. Alles in ein neues P12-Bundle für das Gerät packen
         KeyStore deviceP12 = KeyStore.getInstance(keystoreType);
         deviceP12.load(null, null);
 
-        // Die Kette besteht aus: [Terminal-Zertifikat, CA-Zertifikat]
-        deviceP12.setKeyEntry(deviceName, deviceKeyPair.getPrivate(), keystorePassword,
-                new X509Certificate[]{deviceCert, caCert});
+        // WICHTIG: Erstelle ein Array vom Typ Certificate (Basisklasse)
+        // Java PKCS12 Implementierung ist hier manchmal eigenwillig bei Untertypen
+        java.security.cert.Certificate[] chain = new java.security.cert.Certificate[2];
+        chain[0] = deviceCert;
+        chain[1] = caCert;
 
+        // DEBUG (Optional): Falls es immer noch kracht, aktiviere diese Zeile um die Namen zu prüfen
+         System.out.println("Device Issuer: " + deviceCert.getIssuerX500Principal().getName());
+         System.out.println("CA Subject: " + caCert.getSubjectX500Principal().getName());
+
+        // Hier passiert der Fehler: Wir setzen den Key und die Kette
+        deviceP12.setKeyEntry(deviceName, deviceKeyPair.getPrivate(), keystorePassword, chain);
+
+        // Als Byte-Array exportieren
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         deviceP12.store(bos, keystorePassword);
+
         return bos.toByteArray();
     }
 
