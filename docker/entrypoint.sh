@@ -22,17 +22,20 @@ export JWT_SECRET
 
 # 2. SSL PFADE & ALIASE
 KEYSTORE_PATH=${SSL_KEYSTORE_PATH:-/app/certs/keystore.p12}
+TRUSTSTORE_PATH=${SSL_TRUSTSTORE_PATH:-/app/certs/truststore.p12}
 PASSWORD=${SSL_PASSWORD:-KeystorePasswort123}
 CA_ALIAS=${APP_CA_ALIAS:-vereinskasse-ca}
 SERVER_ALIAS="vereinskasse-server"
 
-if [ ! -f "$KEYSTORE_PATH" ]; then
-    echo "Kein SSL-Keystore gefunden. Starte PKI-Initialisierung..."
-    mkdir -p "$(dirname "$KEYSTORE_PATH")"
+# Stelle sicher, dass die Verzeichnisse existieren
+mkdir -p "$(dirname "$KEYSTORE_PATH")"
+mkdir -p "$(dirname "$TRUSTSTORE_PATH")"
+
+if [ ! -f "$KEYSTORE_PATH" ] || [ ! -f "$TRUSTSTORE_PATH" ]; then
+    echo "Starte PKI-Initialisierung..."
 
     # --- SCHRITT A: Root-CA generieren ---
-    # Manche Versionen wollen 'ca:true', manche 'ca=true'.
-    # Wir nutzen hier die stabilste Variante:
+    echo "Generiere Root-CA..."
     keytool -genkeypair \
       -alias "$CA_ALIAS" \
       -keyalg RSA \
@@ -47,6 +50,7 @@ if [ ! -f "$KEYSTORE_PATH" ]; then
       -storetype PKCS12
 
     # --- SCHRITT B: Server-Zertifikat generieren ---
+    echo "Generiere Server-Zertifikat..."
     keytool -genkeypair \
       -alias "$SERVER_ALIAS" \
       -keyalg RSA \
@@ -80,35 +84,64 @@ if [ ! -f "$KEYSTORE_PATH" ]; then
       -ext "eku=serverAuth"
 
     # 3. CA-Zertifikat exportieren
+    echo "Exportiere CA-Zertifikat..."
     keytool -exportcert \
       -alias "$CA_ALIAS" \
       -keystore "$KEYSTORE_PATH" \
       -storepass "$PASSWORD" \
+      -rfc \
       -file /tmp/ca.crt
 
+    # 4. Server-Zertifikat + CA-Kette kombinieren
+    echo "Erstelle Zertifikatskette..."
+    cat /tmp/server.crt /tmp/ca.crt > /tmp/server-chain.crt
 
-  # CA-Zertifikat ZUERST importieren (als Trust-Anchor)
-   keytool -importcert \
-     -alias "$CA_ALIAS" \
-     -keystore "$KEYSTORE_PATH" \
-     -storepass "$PASSWORD" \
-     -file /tmp/ca.crt \
-     -noprompt
+    # 5. Server-Zertifikat mit Kette importieren (NACH Signierung!)
+    # WICHTIG: Zuerst die CA importieren
+    echo "Importiere CA in Keystore..."
+    keytool -importcert \
+      -alias "${CA_ALIAS}-import" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/ca.crt \
+      -noprompt
 
-   # 2. DANN das signierte Server-Zertifikat mit Kette importieren
-   # Die Kette MUSS enthalten: Server-Cert + CA-Cert
-   keytool -importcert \
-     -alias "$SERVER_ALIAS" \
-     -keystore "$KEYSTORE_PATH" \
-     -storepass "$PASSWORD" \
-     -file /tmp/server.crt \
-     -noprompt
+    # Dann das signierte Server-Zertifikat mit Kette
+    echo "Importiere signiertes Server-Zertifikat..."
+    keytool -importcert \
+      -alias "$SERVER_ALIAS" \
+      -keystore "$KEYSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -file /tmp/server-chain.crt \
+      -noprompt
 
-    rm /tmp/server.csr /tmp/server.crt /tmp/ca.crt
-    echo "Zertifikate erfolgreich unter $KEYSTORE_PATH erstellt."
+    # --- SCHRITT D: SEPARATEN TRUST-STORE ERSTELLEN ---
+    echo "Erstelle separaten Trust-Store..."
+
+    # Trust-Store mit CA-Zertifikat
+    keytool -import \
+      -alias "$CA_ALIAS" \
+      -file /tmp/ca.crt \
+      -keystore "$TRUSTSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -noprompt \
+      -storetype PKCS12
+
+    # Aufräumen
+    rm -f /tmp/server.csr /tmp/server.crt /tmp/server-chain.crt /tmp/ca.crt
+
+    echo "✓ Zertifikate erfolgreich erstellt:"
+    echo "  - Keystore: $KEYSTORE_PATH"
+    echo "  - Truststore: $TRUSTSTORE_PATH"
 else
-    echo "Vorhandener Keystore wird verwendet."
+    echo "✓ Vorhandene Keystores werden verwendet."
 fi
 
-# 5. Startet die Java-Anwendung
+# Überprüfe, ob Trust-Store existiert und nicht leer ist
+if [ ! -f "$TRUSTSTORE_PATH" ]; then
+    echo "ERROR: Trust-Store existiert nicht: $TRUSTSTORE_PATH"
+    exit 1
+fi
+
+echo "Starte Spring Boot Anwendung..."
 exec java -jar /vereinskasse/server/server.jar
