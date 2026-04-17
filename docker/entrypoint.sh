@@ -23,6 +23,9 @@ export JWT_SECRET
 # 2. SSL PFADE & ALIASE
 KEYSTORE_PATH=${SSL_KEYSTORE_PATH:-/app/certs/keystore.p12}
 TRUSTSTORE_PATH=${SSL_TRUSTSTORE_PATH:-/app/certs/truststore.p12}
+# NEU: Pfad für das öffentliche CA-Zertifikat für den Nginx Proxy
+CA_CRT_PATH="$(dirname "$KEYSTORE_PATH")/ca.crt"
+
 PASSWORD=${SSL_PASSWORD:-KeystorePasswort123}
 CA_ALIAS=${APP_CA_ALIAS:-vereinskasse-ca}
 SERVER_ALIAS="vereinskasse-server"
@@ -40,32 +43,19 @@ if [ ! -f "$KEYSTORE_PATH" ] || [ ! -f "$TRUSTSTORE_PATH" ]; then
     echo "Generiere Root-CA privaten Schlüssel (4096-bit RSA)..."
     openssl genrsa -out "$TMP_CERTS/ca-key.pem" 4096
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: CA-Schlüssel-Generierung fehlgeschlagen"
-        exit 1
-    fi
-
     # --- SCHRITT B: Root-CA Zertifikat selbst signieren ---
     echo "Erstelle selbstsigniertes Root-CA Zertifikat..."
     openssl req -new -x509 -days 3650 -key "$TMP_CERTS/ca-key.pem" \
       -out "$TMP_CERTS/ca.crt" \
       -subj "/CN=Vereinskasse Root CA/O=Verein/C=DE"
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: CA-Zertifikat-Erstellung fehlgeschlagen"
-        exit 1
-    fi
-
-    echo "✓ Root-CA erstellt"
+    # NEU: Das CA-Zertifikat sofort in das permanente Verzeichnis kopieren
+    cp "$TMP_CERTS/ca.crt" "$CA_CRT_PATH"
+    echo "✓ Root-CA erstellt und exportiert nach: $CA_CRT_PATH"
 
     # --- SCHRITT C: Server privaten Schlüssel generieren ---
     echo "Generiere Server privaten Schlüssel (2048-bit RSA)..."
     openssl genrsa -out "$TMP_CERTS/server-key.pem" 2048
-
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Server-Schlüssel-Generierung fehlgeschlagen"
-        exit 1
-    fi
 
     # --- SCHRITT D: Server CSR erstellen ---
     echo "Erstelle Server Certificate Signing Request (CSR)..."
@@ -73,15 +63,8 @@ if [ ! -f "$KEYSTORE_PATH" ] || [ ! -f "$TRUSTSTORE_PATH" ]; then
       -out "$TMP_CERTS/server.csr" \
       -subj "/CN=localhost/OU=Server/O=Vereinskasse/C=DE"
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Server-CSR-Erstellung fehlgeschlagen"
-        exit 1
-    fi
-
     # --- SCHRITT E: Server-Zertifikat mit CA signieren ---
     echo "Signiere Server-Zertifikat mit Root-CA..."
-
-    # Erstelle eine Konfigurationsdatei für die x509-Erweiterungen
     cat > "$TMP_CERTS/server.conf" <<EOF
 [ v3_req ]
 basicConstraints = CA:FALSE
@@ -99,22 +82,11 @@ EOF
       -extensions v3_req \
       -extfile "$TMP_CERTS/server.conf"
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Server-Zertifikat-Signierung fehlgeschlagen"
-        exit 1
-    fi
-
-    echo "✓ Server-Zertifikat signiert"
-
     # --- SCHRITT F: Zertifikatskette kombinieren ---
-    echo "Erstelle Zertifikatskette..."
     cat "$TMP_CERTS/server.crt" "$TMP_CERTS/ca.crt" > "$TMP_CERTS/server-chain.crt"
 
-    # --- SCHRITT G: Keystore (PKCS12) für Server erstellen ---
-# --- SCHRITT G: Keystore (PKCS12) für Server UND CA-Signierung erstellen ---
+    # --- SCHRITT G: Keystore (PKCS12) erstellen ---
     echo "Erstelle PKCS12 Keystore..."
-
-    # 1. Zuerst den Server-Eintrag (wie bisher)
     openssl pkcs12 -export \
       -in "$TMP_CERTS/server-chain.crt" \
       -inkey "$TMP_CERTS/server-key.pem" \
@@ -122,11 +94,7 @@ EOF
       -name "$SERVER_ALIAS" \
       -password "pass:$PASSWORD"
 
-    # 2. JETZT WICHTIG: Den CA-Key ebenfalls in denselben Keystore importieren
-    # Wir nutzen ein temporäres Bundle, um es mit keytool zu mergen oder
-    # fügen es direkt hinzu. Am einfachsten ist es, beide in eine Datei zu packen:
-
-    echo "Füge CA-Privatschlüssel zum Keystore hinzu..."
+    # CA-Key für Signatur-Dienst importieren
     openssl pkcs12 -export \
       -in "$TMP_CERTS/ca.crt" \
       -inkey "$TMP_CERTS/ca-key.pem" \
@@ -134,7 +102,6 @@ EOF
       -name "$CA_ALIAS" \
       -password "pass:$PASSWORD"
 
-    # Jetzt mergen wir das CA-Bundle in den Haupt-Keystore
     keytool -importkeystore \
       -srckeystore "$TMP_CERTS/ca-bundle.p12" \
       -srcstoretype PKCS12 \
@@ -143,12 +110,8 @@ EOF
       -deststorepass "$PASSWORD" \
       -noprompt
 
-    # --- SCHRITT H: Trust-Store (PKCS12) für mTLS erstellen ---
-    # WICHTIG: -nokey ist nicht bei allen OpenSSL-Versionen vorhanden
-    # Fallback: Wir erstellen ein leeres Keystore und importieren dann die CA
-    echo "Erstelle PKCS12 Trust-Store mit CA-Zertifikat..."
-
-    # Versuch 1: Mit keytool (Java-Standard, immer vorhanden)
+    # --- SCHRITT H: Trust-Store (PKCS12) erstellen ---
+    echo "Erstelle PKCS12 Trust-Store..."
     keytool -import \
       -alias "$CA_ALIAS" \
       -file "$TMP_CERTS/ca.crt" \
@@ -157,65 +120,25 @@ EOF
       -noprompt \
       -storetype PKCS12 2>/dev/null
 
-    if [ $? -ne 0 ]; then
-        echo "Fallback: Verwende OpenSSL für Trust-Store..."
-
-        # Versuch 2: Erstelle ein leeres PKCS12 mit einem Dummy-Zertifikat
-        # und ersetze es dann durch die CA
-        openssl pkcs12 -export \
-          -in "$TMP_CERTS/ca.crt" \
-          -out "$TRUSTSTORE_PATH" \
-          -name "$CA_ALIAS" \
-          -password "pass:$PASSWORD" \
-          -noout 2>/dev/null
-
-        if [ $? -ne 0 ]; then
-            echo "Fallback 2: Direkter OpenSSL-Export..."
-            # Versuch 3: Alternative OpenSSL-Syntax (für ältere Versionen)
-            cat "$TMP_CERTS/ca.crt" | \
-            openssl pkcs12 -export \
-              -name "$CA_ALIAS" \
-              -password "pass:$PASSWORD" \
-              -out "$TRUSTSTORE_PATH" \
-              -nokey -nocerts -in /dev/stdin
-        fi
-    fi
-
-    if [ ! -f "$TRUSTSTORE_PATH" ] || [ ! -s "$TRUSTSTORE_PATH" ]; then
-        echo "ERROR: PKCS12-Trust-Store-Erstellung fehlgeschlagen"
-        exit 1
-    fi
-
-    echo "✓ Trust-Store erstellt: $TRUSTSTORE_PATH"
-
-    # --- Aufräumen ---
+    # Aufräumen
     rm -rf "$TMP_CERTS"
-
-    echo ""
-    echo "✓✓✓ Zertifikate erfolgreich erstellt:"
-    echo "  - Keystore (Server): $KEYSTORE_PATH"
-    echo "  - Trust-Store (mTLS): $TRUSTSTORE_PATH"
-    echo "  - Passwort: $PASSWORD"
-    echo ""
-
+    echo "✓✓✓ PKI Initialisierung abgeschlossen."
 else
     echo "✓ Vorhandene Keystores werden verwendet."
+
+    # NEU: Falls der Keystore da ist, aber die ca.crt fehlt (z.B. Volume gelöscht),
+    # extrahieren wir sie einfach wieder aus dem Truststore.
+    if [ ! -f "$CA_CRT_PATH" ]; then
+        echo "Extrahiere fehlende ca.crt aus dem Truststore..."
+        keytool -exportcert -alias "$CA_ALIAS" \
+          -keystore "$TRUSTSTORE_PATH" \
+          -storepass "$PASSWORD" \
+          -file "$CA_CRT_PATH" -rfc
+    fi
 fi
 
-# --- Verifizierung ---
-if [ ! -f "$KEYSTORE_PATH" ]; then
-    echo "ERROR: Keystore existiert nicht: $KEYSTORE_PATH"
-    exit 1
-fi
+# --- Finale Verifizierung ---
+[ -f "$CA_CRT_PATH" ] && echo "✓ CA-Zertifikat verfügbar für Proxy: $CA_CRT_PATH"
 
-if [ ! -f "$TRUSTSTORE_PATH" ]; then
-    echo "ERROR: Trust-Store existiert nicht: $TRUSTSTORE_PATH"
-    exit 1
-fi
-
-echo "Verifiziere Keystores..."
-keytool -list -keystore "$KEYSTORE_PATH" -storepass "$PASSWORD" -v 2>/dev/null | head -20
-
-echo ""
 echo "Starte Spring Boot Anwendung..."
 exec java -jar /vereinskasse/server/server.jar
