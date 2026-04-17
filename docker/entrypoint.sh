@@ -26,122 +26,151 @@ TRUSTSTORE_PATH=${SSL_TRUSTSTORE_PATH:-/app/certs/truststore.p12}
 PASSWORD=${SSL_PASSWORD:-KeystorePasswort123}
 CA_ALIAS=${APP_CA_ALIAS:-vereinskasse-ca}
 SERVER_ALIAS="vereinskasse-server"
+CERTS_DIR="$(dirname "$KEYSTORE_PATH")"
 
 # Stelle sicher, dass die Verzeichnisse existieren
-mkdir -p "$(dirname "$KEYSTORE_PATH")"
-mkdir -p "$(dirname "$TRUSTSTORE_PATH")"
+mkdir -p "$CERTS_DIR"
+TMP_CERTS="/tmp/certs"
+mkdir -p "$TMP_CERTS"
 
 if [ ! -f "$KEYSTORE_PATH" ] || [ ! -f "$TRUSTSTORE_PATH" ]; then
-    echo "Starte PKI-Initialisierung..."
+    echo "Starte PKI-Initialisierung mit OpenSSL..."
 
-    # --- SCHRITT A: Root-CA generieren ---
-    echo "Generiere Root-CA..."
-    keytool -genkeypair \
-      -alias "$CA_ALIAS" \
-      -keyalg RSA \
-      -keysize 4096 \
-      -ext "bc=ca:true" \
-      -ext "ku=keyCertSign,cRLSign" \
-      -validity 3650 \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -keypass "$PASSWORD" \
-      -dname "CN=Vereinskasse Root CA, O=Verein, C=DE" \
-      -storetype PKCS12
+    # --- SCHRITT A: Root-CA privaten Schlüssel generieren ---
+    echo "Generiere Root-CA privaten Schlüssel (4096-bit RSA)..."
+    openssl genrsa -out "$TMP_CERTS/ca-key.pem" 4096
 
-    # --- SCHRITT B: Server-Zertifikat generieren ---
-    echo "Generiere Server-Zertifikat..."
-    keytool -genkeypair \
-      -alias "$SERVER_ALIAS" \
-      -keyalg RSA \
-      -keysize 2048 \
-      -validity 1825 \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -keypass "$PASSWORD" \
-      -dname "CN=localhost, OU=Server, O=Vereinskasse, C=DE" \
-      -storetype PKCS12
+    if [ $? -ne 0 ]; then
+        echo "ERROR: CA-Schlüssel-Generierung fehlgeschlagen"
+        exit 1
+    fi
 
-    # --- SCHRITT C: Signierungsprozess ---
+    # --- SCHRITT B: Root-CA Zertifikat selbst signieren ---
+    echo "Erstelle selbstsigniertes Root-CA Zertifikat..."
+    openssl req -new -x509 -days 3650 -key "$TMP_CERTS/ca-key.pem" \
+      -out "$TMP_CERTS/ca.crt" \
+      -subj "/CN=Vereinskasse Root CA/O=Verein/C=DE"
+
+    if [ $? -ne 0 ]; then
+        echo "ERROR: CA-Zertifikat-Erstellung fehlgeschlagen"
+        exit 1
+    fi
+
+    echo "✓ Root-CA erstellt"
+
+    # --- SCHRITT C: Server privaten Schlüssel generieren ---
+    echo "Generiere Server privaten Schlüssel (2048-bit RSA)..."
+    openssl genrsa -out "$TMP_CERTS/server-key.pem" 2048
+
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Server-Schlüssel-Generierung fehlgeschlagen"
+        exit 1
+    fi
+
+    # --- SCHRITT D: Server CSR erstellen ---
+    echo "Erstelle Server Certificate Signing Request (CSR)..."
+    openssl req -new -key "$TMP_CERTS/server-key.pem" \
+      -out "$TMP_CERTS/server.csr" \
+      -subj "/CN=localhost/OU=Server/O=Vereinskasse/C=DE"
+
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Server-CSR-Erstellung fehlgeschlagen"
+        exit 1
+    fi
+
+    # --- SCHRITT E: Server-Zertifikat mit CA signieren ---
     echo "Signiere Server-Zertifikat mit Root-CA..."
 
-    # 1. CSR erstellen
-    keytool -certreq \
-      -alias "$SERVER_ALIAS" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -file /tmp/server.csr
+    # Erstelle eine Konfigurationsdatei für die x509-Erweiterungen
+    cat > "$TMP_CERTS/server.conf" <<EOF
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:localhost,DNS:127.0.0.1,DNS:vereinskasse-server,IP:127.0.0.1
+EOF
 
-    # 2. CSR signieren
-    keytool -gencert \
-      -alias "$CA_ALIAS" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -infile /tmp/server.csr \
-      -outfile /tmp/server.crt \
-      -validity 1825 \
-      -ext "ku=digitalSignature,keyEncipherment" \
-      -ext "eku=serverAuth"
+    openssl x509 -req -days 1825 \
+      -in "$TMP_CERTS/server.csr" \
+      -CA "$TMP_CERTS/ca.crt" \
+      -CAkey "$TMP_CERTS/ca-key.pem" \
+      -CAcreateserial \
+      -out "$TMP_CERTS/server.crt" \
+      -extensions v3_req \
+      -extfile "$TMP_CERTS/server.conf"
 
-    # 3. CA-Zertifikat exportieren
-    echo "Exportiere CA-Zertifikat..."
-    keytool -exportcert \
-      -alias "$CA_ALIAS" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -rfc \
-      -file /tmp/ca.crt
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Server-Zertifikat-Signierung fehlgeschlagen"
+        exit 1
+    fi
 
-    # 4. Server-Zertifikat + CA-Kette kombinieren
+    echo "✓ Server-Zertifikat signiert"
+
+    # --- SCHRITT F: Zertifikatskette kombinieren ---
     echo "Erstelle Zertifikatskette..."
-    cat /tmp/server.crt /tmp/ca.crt > /tmp/server-chain.crt
+    cat "$TMP_CERTS/server.crt" "$TMP_CERTS/ca.crt" > "$TMP_CERTS/server-chain.crt"
 
-    # 5. Server-Zertifikat mit Kette importieren (NACH Signierung!)
-    # WICHTIG: Zuerst die CA importieren
-    echo "Importiere CA in Keystore..."
-    keytool -importcert \
-      -alias "${CA_ALIAS}-import" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -file /tmp/ca.crt \
-      -noprompt
+    # --- SCHRITT G: Keystore (PKCS12) für Server erstellen ---
+    echo "Erstelle PKCS12 Keystore mit Server-Zertifikat und Kette..."
+    openssl pkcs12 -export \
+      -in "$TMP_CERTS/server-chain.crt" \
+      -inkey "$TMP_CERTS/server-key.pem" \
+      -out "$KEYSTORE_PATH" \
+      -name "$SERVER_ALIAS" \
+      -password "pass:$PASSWORD" \
+      -certfile "$TMP_CERTS/ca.crt"
 
-    # Dann das signierte Server-Zertifikat mit Kette
-    echo "Importiere signiertes Server-Zertifikat..."
-    keytool -importcert \
-      -alias "$SERVER_ALIAS" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -file /tmp/server-chain.crt \
-      -noprompt
+    if [ $? -ne 0 ]; then
+        echo "ERROR: PKCS12-Keystore-Erstellung fehlgeschlagen"
+        exit 1
+    fi
 
-    # --- SCHRITT D: SEPARATEN TRUST-STORE ERSTELLEN ---
-    echo "Erstelle separaten Trust-Store..."
+    echo "✓ Keystore erstellt: $KEYSTORE_PATH"
 
-    # Trust-Store mit CA-Zertifikat
-    keytool -import \
-      -alias "$CA_ALIAS" \
-      -file /tmp/ca.crt \
-      -keystore "$TRUSTSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -noprompt \
-      -storetype PKCS12
+    # --- SCHRITT H: Trust-Store (PKCS12) für mTLS erstellen ---
+    echo "Erstelle PKCS12 Trust-Store mit CA-Zertifikat..."
+    openssl pkcs12 -export \
+      -in "$TMP_CERTS/ca.crt" \
+      -out "$TRUSTSTORE_PATH" \
+      -name "$CA_ALIAS" \
+      -password "pass:$PASSWORD" \
+      -nokey
 
-    # Aufräumen
-    rm -f /tmp/server.csr /tmp/server.crt /tmp/server-chain.crt /tmp/ca.crt
+    if [ $? -ne 0 ]; then
+        echo "ERROR: PKCS12-Trust-Store-Erstellung fehlgeschlagen"
+        exit 1
+    fi
 
-    echo "✓ Zertifikate erfolgreich erstellt:"
-    echo "  - Keystore: $KEYSTORE_PATH"
-    echo "  - Truststore: $TRUSTSTORE_PATH"
+    echo "✓ Trust-Store erstellt: $TRUSTSTORE_PATH"
+
+    # --- Aufräumen ---
+    rm -rf "$TMP_CERTS"
+
+    echo ""
+    echo "✓✓✓ Zertifikate erfolgreich erstellt:"
+    echo "  - Keystore (Server): $KEYSTORE_PATH"
+    echo "  - Trust-Store (mTLS): $TRUSTSTORE_PATH"
+    echo "  - Passwort: $PASSWORD"
+    echo ""
+
 else
     echo "✓ Vorhandene Keystores werden verwendet."
 fi
 
-# Überprüfe, ob Trust-Store existiert und nicht leer ist
+# --- Verifizierung ---
+if [ ! -f "$KEYSTORE_PATH" ]; then
+    echo "ERROR: Keystore existiert nicht: $KEYSTORE_PATH"
+    exit 1
+fi
+
 if [ ! -f "$TRUSTSTORE_PATH" ]; then
     echo "ERROR: Trust-Store existiert nicht: $TRUSTSTORE_PATH"
     exit 1
 fi
 
+echo "Verifiziere Keystores..."
+keytool -list -keystore "$KEYSTORE_PATH" -storepass "$PASSWORD" -v 2>/dev/null | head -20
+
+echo ""
 echo "Starte Spring Boot Anwendung..."
 exec java -jar /vereinskasse/server/server.jar
