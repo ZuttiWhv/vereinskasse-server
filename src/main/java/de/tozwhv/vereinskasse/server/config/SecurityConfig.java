@@ -22,6 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final X509HeaderFilter x509HeaderFilter;
 
 
     @Bean
@@ -38,7 +39,8 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // Frames von H2 erlauben
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(x509HeaderFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
