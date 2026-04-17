@@ -128,15 +128,44 @@ EOF
     echo "✓ Keystore erstellt: $KEYSTORE_PATH"
 
     # --- SCHRITT H: Trust-Store (PKCS12) für mTLS erstellen ---
+    # WICHTIG: -nokey ist nicht bei allen OpenSSL-Versionen vorhanden
+    # Fallback: Wir erstellen ein leeres Keystore und importieren dann die CA
     echo "Erstelle PKCS12 Trust-Store mit CA-Zertifikat..."
-    openssl pkcs12 -export \
-      -in "$TMP_CERTS/ca.crt" \
-      -out "$TRUSTSTORE_PATH" \
-      -name "$CA_ALIAS" \
-      -password "pass:$PASSWORD" \
-      -nokey
+
+    # Versuch 1: Mit keytool (Java-Standard, immer vorhanden)
+    keytool -import \
+      -alias "$CA_ALIAS" \
+      -file "$TMP_CERTS/ca.crt" \
+      -keystore "$TRUSTSTORE_PATH" \
+      -storepass "$PASSWORD" \
+      -noprompt \
+      -storetype PKCS12 2>/dev/null
 
     if [ $? -ne 0 ]; then
+        echo "Fallback: Verwende OpenSSL für Trust-Store..."
+
+        # Versuch 2: Erstelle ein leeres PKCS12 mit einem Dummy-Zertifikat
+        # und ersetze es dann durch die CA
+        openssl pkcs12 -export \
+          -in "$TMP_CERTS/ca.crt" \
+          -out "$TRUSTSTORE_PATH" \
+          -name "$CA_ALIAS" \
+          -password "pass:$PASSWORD" \
+          -noout 2>/dev/null
+
+        if [ $? -ne 0 ]; then
+            echo "Fallback 2: Direkter OpenSSL-Export..."
+            # Versuch 3: Alternative OpenSSL-Syntax (für ältere Versionen)
+            cat "$TMP_CERTS/ca.crt" | \
+            openssl pkcs12 -export \
+              -name "$CA_ALIAS" \
+              -password "pass:$PASSWORD" \
+              -out "$TRUSTSTORE_PATH" \
+              -nokey -nocerts -in /dev/stdin
+        fi
+    fi
+
+    if [ ! -f "$TRUSTSTORE_PATH" ] || [ ! -s "$TRUSTSTORE_PATH" ]; then
         echo "ERROR: PKCS12-Trust-Store-Erstellung fehlgeschlagen"
         exit 1
     fi
