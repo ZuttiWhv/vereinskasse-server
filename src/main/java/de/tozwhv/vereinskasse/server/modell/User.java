@@ -51,6 +51,10 @@ public class User implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "billing_group_id")
+    private BillingGroup billingGroup;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

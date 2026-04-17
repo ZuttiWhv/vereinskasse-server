@@ -100,10 +100,17 @@ public class SaleController {
             sale.setUser(loggedInUser);
         }
 
-        // 6. Guthaben-Logik (wie zuvor besprochen)
-        if (sale.getUser().getBalance() < sale.getPrice()) {
+        // 6. Guthaben-Logik mit BillingGroup
+        long combinedBalance;
+        if (sale.getUser().getBillingGroup().isAllowNegativeBalance()) {
+            combinedBalance = sale.getUser().getBalance() + sale.getUser().getBillingGroup().getCreditLimit();
+        } else {
+            combinedBalance = sale.getUser().getBalance();
+        }
+        if (combinedBalance < sale.getPrice()) {
             throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Guthaben nicht ausreichend!");
         }
+
 
         sale.getUser().setBalance(sale.getUser().getBalance() - sale.getPrice());
         userRepository.save(sale.getUser());

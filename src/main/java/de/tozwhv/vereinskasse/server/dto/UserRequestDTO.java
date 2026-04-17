@@ -6,7 +6,8 @@ public record UserRequestDTO(
         String username,
         String password,
         List<Long> roleIds,
+        Long billingGroupId,
         Integer pin,
-        Integer balance
+        Long balance
 ) {
 }

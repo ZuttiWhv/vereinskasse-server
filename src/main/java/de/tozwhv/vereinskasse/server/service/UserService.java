@@ -5,6 +5,7 @@ import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.repository.BillingGroupRepository;
 import de.tozwhv.vereinskasse.server.repository.DepositRepository;
 import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
@@ -30,16 +31,18 @@ public class UserService implements UserDetailsService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final DepositRepository depositRepository;
+    private final BillingGroupRepository billingGroupRepository;
 
     // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.depositRepository = depositRepository;
+        this.billingGroupRepository = billingGroupRepository;
     }
 
     @Override
@@ -89,6 +92,8 @@ public class UserService implements UserDetailsService {
             user.setRoles(roles);
         }
 
+        user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
+
         return userRepository.save(user);
     }
 
@@ -108,6 +113,9 @@ public class UserService implements UserDetailsService {
         }
         if (dto.pin() != null) {
             user.setPin(dto.pin());
+        }
+        if (dto.billingGroupId() != null){
+            user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
 
         // 5. Rollen aktualisieren
@@ -162,7 +170,9 @@ public class UserService implements UserDetailsService {
                         .collect(Collectors.toSet()),
                 user.getAuthorities().stream()
                         .map(Object::toString)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                user.getBillingGroup().getId(),
+                user.getBillingGroup().getName()
         );
     }
 
