@@ -111,21 +111,37 @@ EOF
     cat "$TMP_CERTS/server.crt" "$TMP_CERTS/ca.crt" > "$TMP_CERTS/server-chain.crt"
 
     # --- SCHRITT G: Keystore (PKCS12) für Server erstellen ---
-    echo "Erstelle PKCS12 Keystore mit Server-Zertifikat und Kette..."
+# --- SCHRITT G: Keystore (PKCS12) für Server UND CA-Signierung erstellen ---
+    echo "Erstelle PKCS12 Keystore..."
+
+    # 1. Zuerst den Server-Eintrag (wie bisher)
     openssl pkcs12 -export \
       -in "$TMP_CERTS/server-chain.crt" \
       -inkey "$TMP_CERTS/server-key.pem" \
       -out "$KEYSTORE_PATH" \
       -name "$SERVER_ALIAS" \
-      -password "pass:$PASSWORD" \
-      -certfile "$TMP_CERTS/ca.crt"
+      -password "pass:$PASSWORD"
 
-    if [ $? -ne 0 ]; then
-        echo "ERROR: PKCS12-Keystore-Erstellung fehlgeschlagen"
-        exit 1
-    fi
+    # 2. JETZT WICHTIG: Den CA-Key ebenfalls in denselben Keystore importieren
+    # Wir nutzen ein temporäres Bundle, um es mit keytool zu mergen oder
+    # fügen es direkt hinzu. Am einfachsten ist es, beide in eine Datei zu packen:
 
-    echo "✓ Keystore erstellt: $KEYSTORE_PATH"
+    echo "Füge CA-Privatschlüssel zum Keystore hinzu..."
+    openssl pkcs12 -export \
+      -in "$TMP_CERTS/ca.crt" \
+      -inkey "$TMP_CERTS/ca-key.pem" \
+      -out "$TMP_CERTS/ca-bundle.p12" \
+      -name "$CA_ALIAS" \
+      -password "pass:$PASSWORD"
+
+    # Jetzt mergen wir das CA-Bundle in den Haupt-Keystore
+    keytool -importkeystore \
+      -srckeystore "$TMP_CERTS/ca-bundle.p12" \
+      -srcstoretype PKCS12 \
+      -srcstorepass "$PASSWORD" \
+      -destkeystore "$KEYSTORE_PATH" \
+      -deststorepass "$PASSWORD" \
+      -noprompt
 
     # --- SCHRITT H: Trust-Store (PKCS12) für mTLS erstellen ---
     # WICHTIG: -nokey ist nicht bei allen OpenSSL-Versionen vorhanden
