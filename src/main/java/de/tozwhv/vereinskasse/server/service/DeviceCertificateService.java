@@ -117,10 +117,6 @@ public class DeviceCertificateService {
         chain[0] = deviceCert;
         chain[1] = caCert;
 
-        // DEBUG (Optional): Falls es immer noch kracht, aktiviere diese Zeile um die Namen zu prüfen
-         System.out.println("Device Issuer: " + deviceCert.getIssuerX500Principal().getName());
-         System.out.println("CA Subject: " + caCert.getSubjectX500Principal().getName());
-
         // Hier passiert der Fehler: Wir setzen den Key und die Kette
         deviceP12.setKeyEntry(deviceName, deviceKeyPair.getPrivate(), keystorePassword, chain);
 
