@@ -86,22 +86,23 @@ if [ ! -f "$KEYSTORE_PATH" ]; then
       -storepass "$PASSWORD" \
       -file /tmp/ca.crt
 
-    # 4. Kette importieren
-    # CA als Trust-Anchor
-    keytool -importcert \
-      -alias "${CA_ALIAS}-trust" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -file /tmp/ca.crt \
-      -noprompt
 
-    # Signiertes Server-Zertifikat importieren
-    keytool -importcert \
-      -alias "$SERVER_ALIAS" \
-      -keystore "$KEYSTORE_PATH" \
-      -storepass "$PASSWORD" \
-      -file /tmp/server.crt \
-      -noprompt
+  # CA-Zertifikat ZUERST importieren (als Trust-Anchor)
+   keytool -importcert \
+     -alias "$CA_ALIAS" \
+     -keystore "$KEYSTORE_PATH" \
+     -storepass "$PASSWORD" \
+     -file /tmp/ca.crt \
+     -noprompt
+
+   # 2. DANN das signierte Server-Zertifikat mit Kette importieren
+   # Die Kette MUSS enthalten: Server-Cert + CA-Cert
+   keytool -importcert \
+     -alias "$SERVER_ALIAS" \
+     -keystore "$KEYSTORE_PATH" \
+     -storepass "$PASSWORD" \
+     -file /tmp/server.crt \
+     -noprompt
 
     rm /tmp/server.csr /tmp/server.crt /tmp/ca.crt
     echo "Zertifikate erfolgreich unter $KEYSTORE_PATH erstellt."
