@@ -5,6 +5,8 @@ public record AppSettingsDTO(
         String secondaryColor,
         String navTextColor,
         String logoPath,
-        String vereinName
+        String vereinName,
+        boolean quickLogin,
+        boolean pinLogin
 ) {
 }

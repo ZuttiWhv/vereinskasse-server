@@ -1,8 +1,10 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.OrgTreeResponseDTO;
+import de.tozwhv.vereinskasse.server.service.AppSettingsService;
 import de.tozwhv.vereinskasse.server.service.OrganisationalUnitService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,7 @@ import java.util.List;
 public class OrganisationalUnitController {
 
     private final OrganisationalUnitService orgUnitService;
+    private final AppSettingsService appSettingsService;
 
     /**
      * Liefert die Organisationsstruktur für den schnellen Login am Terminal.
@@ -25,6 +28,9 @@ public class OrganisationalUnitController {
     @GetMapping
     @PreAuthorize("hasRole('TRUSTED_DEVICE')")
     public ResponseEntity<List<OrgTreeResponseDTO>> getPublicOrgTree() {
+        if (!appSettingsService.getSettingsInternal().isQuickLogin()){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return ResponseEntity.ok(orgUnitService.getFullOrgTree());
     }
 }

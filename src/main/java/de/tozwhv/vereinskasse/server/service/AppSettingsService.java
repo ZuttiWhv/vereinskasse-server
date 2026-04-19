@@ -27,6 +27,11 @@ public class AppSettingsService {
         return mapToDTO(s);
     }
 
+    public AppSettings getSettingsInternal() {
+        return settingsRepository.findById(SETTINGS_ID)
+                .orElseGet(AppSettings::new);
+    }
+
     /**
      * Aktualisiert die bestehenden Einstellungen.
      */
@@ -42,7 +47,8 @@ public class AppSettingsService {
         s.setNavTextColor(dto.navTextColor());
         s.setVereinName(dto.vereinName());
         s.setLogoPath(dto.logoPath());
-
+        s.setPinLogin(dto.pinLogin());
+        s.setQuickLogin(dto.quickLogin());
         // Speichern
         AppSettings updated = settingsRepository.save(s);
 
@@ -58,7 +64,9 @@ public class AppSettingsService {
                 s.getSecondaryColor(),
                 s.getNavTextColor(),
                 s.getLogoPath(),
-                s.getVereinName()
+                s.getVereinName(),
+                s.isQuickLogin(),
+                s.isPinLogin()
         );
     }
 }
