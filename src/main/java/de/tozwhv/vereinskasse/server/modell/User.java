@@ -56,6 +56,11 @@ public class User implements UserDetails {
     private BillingGroup billingGroup;
 
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "org_unit_id")
+    private OrganisationalUnit orgUnit;
+
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return getPermissions().stream()

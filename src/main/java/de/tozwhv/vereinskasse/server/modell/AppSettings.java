@@ -19,6 +19,8 @@ public class AppSettings {
     private String logoPath;
     private String vereinName;
     private String navTextColor;
+    private boolean quickLogin;
+    private boolean pinLogin;
 
     // Standardwerte im Konstruktor
     public AppSettings() {
@@ -26,5 +28,7 @@ public class AppSettings {
         this.secondaryColor = "#1e40af";
         this.vereinName = "Vereinskasse";
         this.navTextColor = "#ffffff";
+        this.pinLogin = false;
+        this.quickLogin = false;
     }
 }
