@@ -50,4 +50,27 @@ public class OrganisationalUnitService {
                 usernames
         );
     }
+    @Transactional
+    public OrganisationalUnit createUnit(String name, Long parentId) {
+        OrganisationalUnit unit = new OrganisationalUnit();
+        unit.setName(name);
+
+        if (parentId != null) {
+            OrganisationalUnit parent = orgUnitRepository.findById(parentId)
+                    .orElseThrow(() -> new RuntimeException("Parent Unit nicht gefunden"));
+            unit.setParent(parent);
+        }
+
+        return orgUnitRepository.save(unit);
+    }
+
+    public List<OrganisationalUnit> getAllUnitsFlat() {
+        return orgUnitRepository.findAll();
+    }
+
+    @Transactional
+    public void deleteUnit(Long id) {
+        // Optional: Prüfung ob noch User in der Einheit sind
+        orgUnitRepository.deleteById(id);
+    }
 }

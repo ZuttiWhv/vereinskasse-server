@@ -8,6 +8,7 @@ public record UserRequestDTO(
         List<Long> roleIds,
         Long billingGroupId,
         Integer pin,
-        Long balance
+        Long balance,
+        Long orgUnitId
 ) {
 }

@@ -10,6 +10,8 @@ public record UserDTO(
         Set<String> roles,
         Set<String> authorities,
         Long billingGroupId,
-        String billingGroupName
+        String billingGroupName,
+        Long orgUnitId,
+        String orgUnitName
 ) {
 }

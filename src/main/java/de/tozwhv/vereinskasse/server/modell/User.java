@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.modell;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -58,6 +59,7 @@ public class User implements UserDetails {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_unit_id")
+    @JsonIgnoreProperties({"users", "subUnits"})
     private OrganisationalUnit orgUnit;
 
 
