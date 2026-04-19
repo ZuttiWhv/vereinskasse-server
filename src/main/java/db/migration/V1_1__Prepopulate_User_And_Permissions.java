@@ -85,6 +85,13 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.executeUpdate();
             stmt.setString(1, "DELETE_BILLING_GROUP");
             stmt.executeUpdate();
+
+            stmt.setString(1, "WRITE_OUS");
+            stmt.executeUpdate();
+            stmt.setString(1, "READ_OUS");
+            stmt.executeUpdate();
+            stmt.setString(1, "DELETE_OUS");
+            stmt.executeUpdate();
         }
 
 
