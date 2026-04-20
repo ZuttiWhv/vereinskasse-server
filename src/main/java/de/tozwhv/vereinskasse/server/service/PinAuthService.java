@@ -53,7 +53,7 @@ public class PinAuthService {
         String username = request.username();
 
         // 1. Bucket holen oder neu erstellen
-        Bucket bucket = cache.computeIfAbsent(username, k -> createNewBucket());
+        Bucket bucket = cache.computeIfAbsent(username, _ -> createNewBucket());
 
         // 2. Prüfen, ob noch Versuche übrig sind
         if (!bucket.tryConsume(1)) {
