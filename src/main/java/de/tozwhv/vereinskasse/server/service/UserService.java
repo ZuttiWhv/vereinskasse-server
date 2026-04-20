@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @Service
 public class UserService implements UserDetailsService {
 
-    // final stellt sicher, dass die Abhängigkeiten beim Start gesetzt werden müssen
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -33,7 +32,6 @@ public class UserService implements UserDetailsService {
     private final OrganisationalUnitRepository organisationalUnitRepository;
     private final PinAuthService pinAuthService;
 
-    // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
