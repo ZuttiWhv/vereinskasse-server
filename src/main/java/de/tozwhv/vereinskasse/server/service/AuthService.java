@@ -1,7 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.config.JwtProvider;
-import de.tozwhv.vereinskasse.server.controller.AuthController;
 import de.tozwhv.vereinskasse.server.dto.AuthResponse;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
