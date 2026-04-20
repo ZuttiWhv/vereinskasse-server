@@ -81,7 +81,7 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(dto.password()));
 
         user.setBalance(dto.balance() != null ? dto.balance() : 0);
-        user.setPin(dto.pin() != null ? dto.pin() : 0);
+        user.setPin(dto.pin() != null ? passwordEncoder.encode(dto.pin()) : null);
         user.setPinEnabled(false);
 
         // SETZEN DER ORG-UNIT
@@ -114,9 +114,18 @@ public class UserService implements UserDetailsService {
         }
 
         if (dto.balance() != null) user.setBalance(dto.balance());
-        if (dto.pin() != null) user.setPin(dto.pin());
 
-        // LOGIK FÜR ABTEILUNG
+        if (dto.pin() != null) {
+            // Validierung: Nur Ziffern, z.B. 4-6 Stellen
+            if (dto.pin().matches("\\d{4,6}")) {
+                throw new IllegalArgumentException("PIN muss aus 4 bis 6 Ziffern bestehen.");
+            }
+
+            // PIN hashen (BCrypt nutzt den gleichen Encoder wie das Passwort)
+            user.setPin(passwordEncoder.encode(dto.pin()));
+            user.setPinEnabled(true);
+        }
+
         if (dto.orgUnitId() != null) {
             user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
         } else {
