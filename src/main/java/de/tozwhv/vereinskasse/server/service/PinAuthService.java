@@ -49,6 +49,11 @@ public class PinAuthService {
                 .orElse(false);
     }
 
+    // Im PinAuthService.java
+    public void resetAttempts(String username) {
+        cache.remove(username);
+    }
+
     public AuthResponse verifyPinAndGenerateToken(PinLoginRequest request) {
         String username = request.username();
 

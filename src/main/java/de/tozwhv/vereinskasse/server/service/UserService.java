@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
@@ -30,18 +31,20 @@ public class UserService implements UserDetailsService {
     private final DepositRepository depositRepository;
     private final BillingGroupRepository billingGroupRepository;
     private final OrganisationalUnitRepository organisationalUnitRepository;
+    private final PinAuthService pinAuthService;
 
     // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.depositRepository = depositRepository;
         this.billingGroupRepository = billingGroupRepository;
         this.organisationalUnitRepository = organisationalUnitRepository;
+        this.pinAuthService = pinAuthService;
     }
 
     @Override
@@ -101,6 +104,28 @@ public class UserService implements UserDetailsService {
         }
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public UserDTO updateSelf(String username, SelfUpdateRequestDTO dto) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+
+        if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        }
+
+        if (dto.newPin() != null && !dto.newPin().isBlank()) {
+            user.setPin(passwordEncoder.encode(dto.newPin()));
+            pinAuthService.resetAttempts(username);
+        }
+
+        if (dto.pinEnabled() != null) {
+            user.setPinEnabled(dto.pinEnabled());
+        }
+
+        User savedUser = userRepository.save(user);
+        return convertToDTO(savedUser);
     }
 
     public User updateUser(Long id, UserRequestDTO dto) {

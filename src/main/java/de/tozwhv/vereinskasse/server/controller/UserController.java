@@ -1,11 +1,13 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,6 +71,15 @@ public class UserController {
         return userService.getUserByUsername(auth.getName());
     }
 
+    @PutMapping("/me")
+    public ResponseEntity<UserDTO> updateSelf(
+            Authentication auth,
+            @Valid @RequestBody SelfUpdateRequestDTO dto) {
+
+        // auth.getName() liefert den aktuell eingeloggten Benutzernamen
+        UserDTO updatedUser = userService.updateSelf(auth.getName(), dto);
+        return ResponseEntity.ok(updatedUser);
+    }
 
     // Benutzer löschen
     @PreAuthorize("hasAuthority('DELETE_USER')")
