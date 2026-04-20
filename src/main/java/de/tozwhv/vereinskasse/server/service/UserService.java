@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
@@ -23,25 +24,25 @@ import java.util.stream.Collectors;
 @Service
 public class UserService implements UserDetailsService {
 
-    // final stellt sicher, dass die Abhängigkeiten beim Start gesetzt werden müssen
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final DepositRepository depositRepository;
     private final BillingGroupRepository billingGroupRepository;
     private final OrganisationalUnitRepository organisationalUnitRepository;
+    private final PinAuthService pinAuthService;
 
-    // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.depositRepository = depositRepository;
         this.billingGroupRepository = billingGroupRepository;
         this.organisationalUnitRepository = organisationalUnitRepository;
+        this.pinAuthService = pinAuthService;
     }
 
     @Override
@@ -81,7 +82,7 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(dto.password()));
 
         user.setBalance(dto.balance() != null ? dto.balance() : 0);
-        user.setPin(dto.pin() != null ? dto.pin() : 0);
+        user.setPin(dto.pin() != null ? passwordEncoder.encode(dto.pin()) : null);
         user.setPinEnabled(false);
 
         // SETZEN DER ORG-UNIT
@@ -103,6 +104,28 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    @Transactional
+    public UserDTO updateSelf(String username, SelfUpdateRequestDTO dto) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+
+        if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        }
+
+        if (dto.newPin() != null && !dto.newPin().isBlank()) {
+            user.setPin(passwordEncoder.encode(dto.newPin()));
+            pinAuthService.resetAttempts(username);
+        }
+
+        if (dto.pinEnabled() != null) {
+            user.setPinEnabled(dto.pinEnabled());
+        }
+
+        User savedUser = userRepository.save(user);
+        return convertToDTO(savedUser);
+    }
+
     public User updateUser(Long id, UserRequestDTO dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
@@ -114,9 +137,18 @@ public class UserService implements UserDetailsService {
         }
 
         if (dto.balance() != null) user.setBalance(dto.balance());
-        if (dto.pin() != null) user.setPin(dto.pin());
 
-        // LOGIK FÜR ABTEILUNG
+        if (dto.pin() != null) {
+            // Validierung: Nur Ziffern, z.B. 4-6 Stellen
+            if (dto.pin().matches("\\d{4,6}")) {
+                throw new IllegalArgumentException("PIN muss aus 4 bis 6 Ziffern bestehen.");
+            }
+
+            // PIN hashen (BCrypt nutzt den gleichen Encoder wie das Passwort)
+            user.setPin(passwordEncoder.encode(dto.pin()));
+            user.setPinEnabled(true);
+        }
+
         if (dto.orgUnitId() != null) {
             user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
         } else {

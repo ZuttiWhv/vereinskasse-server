@@ -36,7 +36,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    private int pin;
+    private String pin;
 
     private boolean pinEnabled;
 
