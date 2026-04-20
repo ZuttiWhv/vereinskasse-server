@@ -40,7 +40,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     implementation 'net.coobird:thumbnailator:0.4.21'
-    implementation 'com.bucket4j:bucket4j_jdk8-core'
+    implementation 'com.bucket4j:bucket4j_jdk8-core:8.10.1'
 
 }
 
