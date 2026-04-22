@@ -27,7 +27,6 @@ public class X509HeaderFilter extends OncePerRequestFilter {
             throws ServletException, java.io.IOException {
 
         String headerCert = request.getHeader("X-SSL-CERT");
-
         if (headerCert != null && !headerCert.isEmpty()) {
             try {
                 String decodedCert = URLDecoder.decode(headerCert, StandardCharsets.UTF_8);
@@ -38,7 +37,6 @@ public class X509HeaderFilter extends OncePerRequestFilter {
                 // 1. Attribut setzen (für Legacy-Kompatibilität oder andere Filter)
                 request.setAttribute("jakarta.servlet.request.X509Certificate", new X509Certificate[]{cert});
 
-                // 2. Rollen-Zuweisung: Wir erstellen eine virtuelle Authentifizierung
                 // Wir nehmen den Common Name (CN) des Zertifikats als "Username"
                 String terminalName = cert.getSubjectX500Principal().getName();
 
