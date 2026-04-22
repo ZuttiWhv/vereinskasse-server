@@ -5,7 +5,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -16,10 +19,13 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class X509HeaderFilter extends OncePerRequestFilter {
 
     @Override
@@ -27,6 +33,7 @@ public class X509HeaderFilter extends OncePerRequestFilter {
             throws ServletException, java.io.IOException {
 
         String headerCert = request.getHeader("X-SSL-CERT");
+
         if (headerCert != null && !headerCert.isEmpty()) {
             try {
                 String decodedCert = URLDecoder.decode(headerCert, StandardCharsets.UTF_8);
@@ -34,25 +41,43 @@ public class X509HeaderFilter extends OncePerRequestFilter {
                 X509Certificate cert = (X509Certificate) cf.generateCertificate(
                         new ByteArrayInputStream(decodedCert.getBytes(StandardCharsets.UTF_8)));
 
-                // 1. Attribut setzen (für Legacy-Kompatibilität oder andere Filter)
                 request.setAttribute("jakarta.servlet.request.X509Certificate", new X509Certificate[]{cert});
 
-                // Wir nehmen den Common Name (CN) des Zertifikats als "Username"
-                String terminalName = cert.getSubjectX500Principal().getName();
+                Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
 
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        terminalName,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_TRUSTED_DEVICE"))
-                );
+                // Fallstrick 4: Doppeltes Hinzufügen der Rolle verhindern
+                SimpleGrantedAuthority deviceAuthority = new SimpleGrantedAuthority("ROLE_TRUSTED_DEVICE");
 
-                // 3. In den SecurityContext legen
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                if (existingAuth != null && existingAuth.isAuthenticated()) {
+                    // USER + DEVICE
+                    if (!existingAuth.getAuthorities().contains(deviceAuthority)) {
+                        List<GrantedAuthority> updatedAuthorities = new ArrayList<>(existingAuth.getAuthorities());
+                        updatedAuthorities.add(deviceAuthority);
 
-                logger.info("mTLS Gerät erkannt und autorisiert: " + terminalName);
+                        UsernamePasswordAuthenticationToken combinedAuth = new UsernamePasswordAuthenticationToken(
+                                existingAuth.getPrincipal(),
+                                existingAuth.getCredentials(),
+                                updatedAuthorities
+                        );
+                        combinedAuth.setDetails(existingAuth.getDetails());
+                        SecurityContextHolder.getContext().setAuthentication(combinedAuth);
+                        log.info("Zertifikat erkannt: ROLE_TRUSTED_DEVICE zu User '{}' hinzugefügt", existingAuth.getName());
+                    }
+                } else {
+                    // NUR DEVICE (kein JWT vorhanden)
+                    String terminalName = cert.getSubjectX500Principal().getName();
+                    UsernamePasswordAuthenticationToken deviceOnlyAuth = new UsernamePasswordAuthenticationToken(
+                            "DEVICE:" + terminalName, // Eindeutiger Principal-Name
+                            null,
+                            List.of(deviceAuthority)
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(deviceOnlyAuth);
+                    log.info("Anonymer Request von vertrauenswürdigem Gerät: {}", terminalName);
+                }
 
             } catch (Exception e) {
-                logger.error("Fehler beim Dekodieren des Client-Zertifikats", e);
+                log.error("Kritischer Fehler bei Zertifikatsverarbeitung: {}", e.getMessage());
+                // Wichtig: Im Fehlerfall keine Auth setzen!
             }
         }
 

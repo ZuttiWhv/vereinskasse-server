@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)) // Frames von H2 erlauben
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(x509HeaderFilter,jwtAuthFilter.getClass());
+                .addFilterAfter(x509HeaderFilter, JwtAuthFilter.class);
         return http.build();
     }
 
