@@ -20,10 +20,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
     private final JwtAuthFilter jwtAuthFilter;
     private final X509HeaderFilter x509HeaderFilter;
-
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) {
