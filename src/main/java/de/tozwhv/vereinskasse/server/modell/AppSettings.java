@@ -21,6 +21,7 @@ public class AppSettings {
     private String navTextColor;
     private boolean quickLogin;
     private boolean pinLogin;
+    private boolean passwordlessLogin;
 
     // Standardwerte im Konstruktor
     public AppSettings() {
@@ -30,5 +31,6 @@ public class AppSettings {
         this.navTextColor = "#ffffff";
         this.pinLogin = false;
         this.quickLogin = false;
+        this.passwordlessLogin = false;
     }
 }

@@ -7,6 +7,7 @@ public record AppSettingsDTO(
         String logoPath,
         String vereinName,
         boolean quickLogin,
-        boolean pinLogin
+        boolean pinLogin,
+        boolean passwordlessLogin
 ) {
 }

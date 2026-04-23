@@ -9,6 +9,7 @@ public record UserRequestDTO(
         Long billingGroupId,
         String pin,
         Long balance,
-        Long orgUnitId
+        Long orgUnitId,
+        Boolean passwordlessLoginEnabled // NEU: Optionales Flag für Erstellung/Update
 ) {
 }

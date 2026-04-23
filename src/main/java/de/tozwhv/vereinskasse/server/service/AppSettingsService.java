@@ -49,6 +49,8 @@ public class AppSettingsService {
         s.setLogoPath(dto.logoPath());
         s.setPinLogin(dto.pinLogin());
         s.setQuickLogin(dto.quickLogin());
+        s.setPasswordlessLogin(dto.passwordlessLogin());
+
         // Speichern
         AppSettings updated = settingsRepository.save(s);
 
@@ -66,7 +68,8 @@ public class AppSettingsService {
                 s.getLogoPath(),
                 s.getVereinName(),
                 s.isQuickLogin(),
-                s.isPinLogin()
+                s.isPinLogin(),
+                s.isPasswordlessLogin()
         );
     }
 }

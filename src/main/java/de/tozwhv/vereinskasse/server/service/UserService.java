@@ -90,6 +90,8 @@ public class UserService implements UserDetailsService {
             user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
         }
 
+        user.setPasswordlessLoginEnabled(dto.passwordlessLoginEnabled() != null && dto.passwordlessLoginEnabled());
+
         // Rollen-Mapping
         if (dto.roleIds() != null) {
             Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
@@ -117,6 +119,9 @@ public class UserService implements UserDetailsService {
             user.setPin(passwordEncoder.encode(dto.newPin()));
             pinAuthService.resetAttempts(username);
         }
+        if (dto.passwordlessLoginEnabled() != null) {
+            user.setPasswordlessLoginEnabled(dto.passwordlessLoginEnabled());
+        }
 
         if (dto.pinEnabled() != null) {
             user.setPinEnabled(dto.pinEnabled());
@@ -136,11 +141,14 @@ public class UserService implements UserDetailsService {
             user.setPassword(passwordEncoder.encode(dto.password()));
         }
 
+        if (dto.passwordlessLoginEnabled() != null) {
+            user.setPasswordlessLoginEnabled(dto.passwordlessLoginEnabled());
+        }
+
         if (dto.balance() != null) user.setBalance(dto.balance());
 
         if (dto.pin() != null) {
-            // Validierung: Nur Ziffern, z.B. 4-6 Stellen
-            if (dto.pin().matches("\\d{4,6}")) {
+            if (!dto.pin().matches("\\d{4,6}")) {
                 throw new IllegalArgumentException("PIN muss aus 4 bis 6 Ziffern bestehen.");
             }
 
@@ -208,7 +216,8 @@ public class UserService implements UserDetailsService {
                 user.getBillingGroup() != null ? user.getBillingGroup().getId() : null,
                 user.getBillingGroup() != null ? user.getBillingGroup().getName() : "Keine Gruppe",
                 user.getOrgUnit() != null ? user.getOrgUnit().getId() : null,
-                user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung"
+                user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung",
+                user.isPasswordlessLoginEnabled()
         );
     }
 
