@@ -10,5 +10,7 @@ public record SelfUpdateRequestDTO(
         @Pattern(regexp = "\\d{4,6}", message = "Die PIN muss aus 4 bis 6 Ziffern bestehen")
         String newPin,
 
-        Boolean pinEnabled
+        Boolean pinEnabled,
+
+        Boolean passwordlessLoginEnabled
 ) {}

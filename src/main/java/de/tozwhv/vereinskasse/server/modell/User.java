@@ -36,6 +36,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean passwordlessLoginEnabled;
+
     private String pin;
 
     private boolean pinEnabled;

@@ -12,6 +12,7 @@ public record UserDTO(
         Long billingGroupId,
         String billingGroupName,
         Long orgUnitId,
-        String orgUnitName
+        String orgUnitName,
+        Boolean passwordlessLoginEnabled
 ) {
 }
