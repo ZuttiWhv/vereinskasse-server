@@ -30,6 +30,7 @@ dependencies {
     implementation 'com.h2database:h2:2.3.232'
     implementation 'org.flywaydb:flyway-core'
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.84'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
@@ -38,8 +39,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-// Source: https://mvnrepository.com/artifact/net.coobird/thumbnailator
     implementation 'net.coobird:thumbnailator:0.4.21'
+    implementation 'com.bucket4j:bucket4j_jdk8-core:8.10.1'
 
 }
 

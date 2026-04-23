@@ -40,3 +40,5 @@ out/
 /gradle.properties
 /data/vereinskasse.lock.db
 /data/media/
+/src/main/resources/application-dev.properties
+/data/keystore.p12

@@ -8,7 +8,10 @@ public record UserDTO(
         boolean pinEnabled,
         long balance,
         Set<String> roles,
-        Set<String> authorities
+        Set<String> authorities,
+        Long billingGroupId,
+        String billingGroupName,
+        Long orgUnitId,
+        String orgUnitName
 ) {
-
 }

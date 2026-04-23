@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.modell;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,7 +36,7 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    private int pin;
+    private String pin;
 
     private boolean pinEnabled;
 
@@ -50,6 +51,16 @@ public class User implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "billing_group_id")
+    private BillingGroup billingGroup;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "org_unit_id")
+    @JsonIgnoreProperties({"users", "subUnits"})
+    private OrganisationalUnit orgUnit;
 
 
     @Override

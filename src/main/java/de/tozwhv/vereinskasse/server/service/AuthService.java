@@ -1,7 +1,7 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.config.JwtProvider;
-import de.tozwhv.vereinskasse.server.controller.AuthController;
+import de.tozwhv.vereinskasse.server.dto.AuthResponse;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import io.jsonwebtoken.security.InvalidKeyException;
@@ -18,7 +18,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
 
-    public AuthController.AuthResponse login(String username, String password) {
+    public AuthResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -28,10 +28,10 @@ public class AuthService {
 
         String access = jwtProvider.generateAccessToken(username);
         String refresh = jwtProvider.generateRefreshToken(username);
-        return new AuthController.AuthResponse(access, refresh);
+        return new AuthResponse(access, refresh);
     }
 
-    public AuthController.AuthResponse refreshToken(String refreshToken) {
+    public AuthResponse refreshToken(String refreshToken) {
         if (!jwtProvider.isValid(refreshToken) ||
                 !"refresh".equals(jwtProvider.extractType(refreshToken))) {
             throw new InvalidKeyException("Invalid refresh token");
@@ -40,6 +40,6 @@ public class AuthService {
         String access = jwtProvider.generateAccessToken(username);
         String refresh = jwtProvider.generateRefreshToken(username);
 
-        return new AuthController.AuthResponse(access, refresh);
+        return new AuthResponse(access, refresh);
     }
 }

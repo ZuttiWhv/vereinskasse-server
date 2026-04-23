@@ -6,8 +6,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.List;
+
 
 public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
 
@@ -75,6 +74,23 @@ public class V1_1__Prepopulate_User_And_Permissions extends BaseJavaMigration {
             stmt.executeUpdate();
 
             stmt.setString(1, "READ_ALL_BALANCES");
+            stmt.executeUpdate();
+
+            stmt.setString(1, "WRITE_DEVICE");
+            stmt.executeUpdate();
+
+            stmt.setString(1, "WRITE_BILLING_GROUP");
+            stmt.executeUpdate();
+            stmt.setString(1, "READ_BILLING_GROUP");
+            stmt.executeUpdate();
+            stmt.setString(1, "DELETE_BILLING_GROUP");
+            stmt.executeUpdate();
+
+            stmt.setString(1, "WRITE_OUS");
+            stmt.executeUpdate();
+            stmt.setString(1, "READ_OUS");
+            stmt.executeUpdate();
+            stmt.setString(1, "DELETE_OUS");
             stmt.executeUpdate();
         }
 

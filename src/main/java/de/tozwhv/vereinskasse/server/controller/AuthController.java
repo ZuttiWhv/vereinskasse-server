@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.AuthResponse;
 import de.tozwhv.vereinskasse.server.service.AuthService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,4 @@ public class AuthController {
         private String refreshToken;
     }
 
-    public record AuthResponse(String accessToken, String refreshToken) {
-    }
 }

@@ -1,13 +1,12 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
-import de.tozwhv.vereinskasse.server.repository.DepositRepository;
-import de.tozwhv.vereinskasse.server.repository.RoleRepository;
-import de.tozwhv.vereinskasse.server.repository.UserRepository;
+import de.tozwhv.vereinskasse.server.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -25,21 +24,25 @@ import java.util.stream.Collectors;
 @Service
 public class UserService implements UserDetailsService {
 
-    // final stellt sicher, dass die Abhängigkeiten beim Start gesetzt werden müssen
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final DepositRepository depositRepository;
+    private final BillingGroupRepository billingGroupRepository;
+    private final OrganisationalUnitRepository organisationalUnitRepository;
+    private final PinAuthService pinAuthService;
 
-    // Der Konstruktor für Spring (kein @Autowired mehr nötig ab Spring 4.3+)
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.depositRepository = depositRepository;
+        this.billingGroupRepository = billingGroupRepository;
+        this.organisationalUnitRepository = organisationalUnitRepository;
+        this.pinAuthService = pinAuthService;
     }
 
     @Override
@@ -78,10 +81,14 @@ public class UserService implements UserDetailsService {
         user.setUsername(dto.username());
         user.setPassword(passwordEncoder.encode(dto.password()));
 
-        // Null-Check oder Default-Werte setzen
         user.setBalance(dto.balance() != null ? dto.balance() : 0);
-        user.setPin(dto.pin() != null ? dto.pin() : 0);
+        user.setPin(dto.pin() != null ? passwordEncoder.encode(dto.pin()) : null);
         user.setPinEnabled(false);
+
+        // SETZEN DER ORG-UNIT
+        if (dto.orgUnitId() != null) {
+            user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
+        }
 
         // Rollen-Mapping
         if (dto.roleIds() != null) {
@@ -89,11 +96,37 @@ public class UserService implements UserDetailsService {
             user.setRoles(roles);
         }
 
+        // BILLING GROUP
+        if (dto.billingGroupId() != null) {
+            user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
+        }
+
         return userRepository.save(user);
     }
 
+    @Transactional
+    public UserDTO updateSelf(String username, SelfUpdateRequestDTO dto) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+
+        if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        }
+
+        if (dto.newPin() != null && !dto.newPin().isBlank()) {
+            user.setPin(passwordEncoder.encode(dto.newPin()));
+            pinAuthService.resetAttempts(username);
+        }
+
+        if (dto.pinEnabled() != null) {
+            user.setPinEnabled(dto.pinEnabled());
+        }
+
+        User savedUser = userRepository.save(user);
+        return convertToDTO(savedUser);
+    }
+
     public User updateUser(Long id, UserRequestDTO dto) {
-        // 1. Bestehenden Benutzer laden oder Fehler werfen
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
 
@@ -103,25 +136,34 @@ public class UserService implements UserDetailsService {
             user.setPassword(passwordEncoder.encode(dto.password()));
         }
 
-        if (dto.balance() != null) {
-            user.setBalance(dto.balance());
-        }
+        if (dto.balance() != null) user.setBalance(dto.balance());
+
         if (dto.pin() != null) {
-            user.setPin(dto.pin());
-        }
-
-        // 5. Rollen aktualisieren
-        if (dto.roleIds() != null) {
-            // Alle Rollen-Entitäten anhand der gelieferten IDs laden
-            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
-
-            // Validierung: Ein User sollte mindestens eine Rolle haben
-            if (!roles.isEmpty()) {
-                user.setRoles(roles);
+            // Validierung: Nur Ziffern, z.B. 4-6 Stellen
+            if (dto.pin().matches("\\d{4,6}")) {
+                throw new IllegalArgumentException("PIN muss aus 4 bis 6 Ziffern bestehen.");
             }
+
+            // PIN hashen (BCrypt nutzt den gleichen Encoder wie das Passwort)
+            user.setPin(passwordEncoder.encode(dto.pin()));
+            user.setPinEnabled(true);
         }
 
-        // 6. Speichern und zurückgeben
+        if (dto.orgUnitId() != null) {
+            user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
+        } else {
+            user.setOrgUnit(null);
+        }
+
+        if (dto.billingGroupId() != null) {
+            user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
+        }
+
+        if (dto.roleIds() != null) {
+            Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
+            if (!roles.isEmpty()) user.setRoles(roles);
+        }
+
         return userRepository.save(user);
     }
 
@@ -162,7 +204,11 @@ public class UserService implements UserDetailsService {
                         .collect(Collectors.toSet()),
                 user.getAuthorities().stream()
                         .map(Object::toString)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                user.getBillingGroup() != null ? user.getBillingGroup().getId() : null,
+                user.getBillingGroup() != null ? user.getBillingGroup().getName() : "Keine Gruppe",
+                user.getOrgUnit() != null ? user.getOrgUnit().getId() : null,
+                user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung"
         );
     }
 
