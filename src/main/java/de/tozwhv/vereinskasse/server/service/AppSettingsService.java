@@ -49,6 +49,7 @@ public class AppSettingsService {
         s.setLogoPath(dto.logoPath());
         s.setPinLogin(dto.pinLogin());
         s.setQuickLogin(dto.quickLogin());
+
         // Speichern
         AppSettings updated = settingsRepository.save(s);
 
