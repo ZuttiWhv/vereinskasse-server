@@ -1,7 +1,10 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import de.tozwhv.vereinskasse.server.modell.Product;
-import de.tozwhv.vereinskasse.server.repository.ProductRepository;
+import de.tozwhv.vereinskasse.server.dto.product.ProductResponseDTO;
+import de.tozwhv.vereinskasse.server.dto.product.ProductRequestDTO;
+import de.tozwhv.vereinskasse.server.service.ProductService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -10,59 +13,59 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
+@RequiredArgsConstructor // Erzeugt den Konstruktor für den ProductService automatisch
 public class ProductController {
 
-    private final ProductRepository productRepository;
-
-    public ProductController(ProductRepository productRepository) {
-        this.productRepository = productRepository;
-    }
+    private final ProductService productService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('READ_PRODUCT')")
-    public List<Product> getAllProducts(@RequestParam(required = false) Long categoryId) {
-        if (categoryId != null) {
-            return productRepository.findByCategoryId(categoryId);
-        }
-        return productRepository.findAll();
-    }
+    public List<ProductResponseDTO> getAllProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "false") boolean onlyActive) {
 
+        if (categoryId != null) {
+            return productService.getProductsByCategory(categoryId);
+        }
+        return productService.getAllProducts(onlyActive);
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('READ_PRODUCT')")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return productRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(productService.getProductById(id));
+        } catch (Exception _) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
-    public Product createProduct(@RequestBody Product product) {
-        return productRepository.save(product);
+    public ResponseEntity<ProductResponseDTO> createProduct(@Valid @RequestBody ProductRequestDTO dto) {
+        return ResponseEntity.ok(productService.createProduct(dto));
     }
 
-
-    @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product productDetails) {
-        return productRepository.findById(id).map(product -> {
-            product.setAnzeigename(productDetails.getAnzeigename());
-            product.setCategory(productDetails.getCategory());
-            product.setName(productDetails.getName());
-            product.setImagePath(productDetails.getImagePath());
-            product.setPrice(productDetails.getPrice());
-            return ResponseEntity.ok(productRepository.save(product));
-        }).orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
+    public ResponseEntity<ProductResponseDTO> updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductRequestDTO dto) {
+        try {
+            return ResponseEntity.ok(productService.updateProduct(id, dto));
+        } catch (Exception _) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('DELETE_PRODUCT')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
+        try {
+            productService.deleteProduct(id);
             return ResponseEntity.noContent().build();
+        } catch (Exception _) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
     }
 }
