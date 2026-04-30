@@ -37,6 +37,21 @@ public class Product {
     @JoinColumn(name = "fk_category_id", nullable = false)
     private Category category;
 
+    /**
+     * Steuert, ob das Produkt aktuell zum Verkauf angeboten wird.
+     * Default: true
+     */
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    /**
+     * Markiert das Produkt als gelöscht (Soft-Delete).
+     * Produkte mit deleted = true sollten in keinem Select mehr auftauchen.
+     * Default: false
+     */
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
 
     public String getPriceString() {
         return String.format("%.2f", price / 100.0) + " €";
