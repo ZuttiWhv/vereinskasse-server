@@ -81,6 +81,35 @@ public class X509HeaderFilter extends OncePerRequestFilter {
             }
         }
 
+        SimpleGrantedAuthority deviceAuthority = new SimpleGrantedAuthority("ROLE_TRUSTED_DEVICE");
+        Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (existingAuth != null && existingAuth.isAuthenticated()) {
+            // USER + DEVICE
+            if (!existingAuth.getAuthorities().contains(deviceAuthority)) {
+                List<GrantedAuthority> updatedAuthorities = new ArrayList<>(existingAuth.getAuthorities());
+                updatedAuthorities.add(deviceAuthority);
+
+                UsernamePasswordAuthenticationToken combinedAuth = new UsernamePasswordAuthenticationToken(
+                        existingAuth.getPrincipal(),
+                        existingAuth.getCredentials(),
+                        updatedAuthorities
+                );
+                combinedAuth.setDetails(existingAuth.getDetails());
+                SecurityContextHolder.getContext().setAuthentication(combinedAuth);
+                log.info("Zertifikat erkannt: ROLE_TRUSTED_DEVICE zu User '{}' hinzugefügt", existingAuth.getName());
+            }
+        }else {
+            // NUR DEVICE (kein JWT vorhanden)
+            String terminalName ="terminal";
+            UsernamePasswordAuthenticationToken deviceOnlyAuth = new UsernamePasswordAuthenticationToken(
+                    "DEVICE:" + terminalName, // Eindeutiger Principal-Name
+                    null,
+                    List.of(deviceAuthority)
+            );
+            SecurityContextHolder.getContext().setAuthentication(deviceOnlyAuth);
+            log.info("Anonymer Request von vertrauenswürdigem Gerät: {}", terminalName);
+        }
+
         filterChain.doFilter(request, response);
     }
 }
