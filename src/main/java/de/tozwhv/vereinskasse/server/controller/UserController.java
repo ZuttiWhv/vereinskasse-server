@@ -1,8 +1,8 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
-import de.tozwhv.vereinskasse.server.dto.UserDTO;
-import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;

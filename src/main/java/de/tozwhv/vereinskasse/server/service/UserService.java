@@ -1,8 +1,8 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
-import de.tozwhv.vereinskasse.server.dto.UserDTO;
-import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
@@ -103,6 +103,10 @@ public class UserService implements UserDetailsService {
             user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
 
+        if (dto.Barcode() !=null){
+            user.setBarcode(dto.Barcode());
+        }
+
         return userRepository.save(user);
     }
 
@@ -163,6 +167,10 @@ public class UserService implements UserDetailsService {
             user.setOrgUnit(null);
         }
 
+        if (dto.Barcode() !=null){
+            user.setBarcode(dto.Barcode());
+        }
+
         if (dto.billingGroupId() != null) {
             user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
@@ -217,7 +225,8 @@ public class UserService implements UserDetailsService {
                 user.getBillingGroup() != null ? user.getBillingGroup().getName() : "Keine Gruppe",
                 user.getOrgUnit() != null ? user.getOrgUnit().getId() : null,
                 user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung",
-                user.isPasswordlessLoginEnabled()
+                user.isPasswordlessLoginEnabled(),
+                user.getBarcode()
         );
     }
 

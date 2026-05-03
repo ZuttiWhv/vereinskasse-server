@@ -18,5 +18,7 @@ public record ProductRequestDTO(
         @NotNull(message = "Eine Kategorie-ID muss angegeben werden")
         Long categoryId,
 
-        boolean active
+        boolean active,
+
+        String barcode
 ) {}
