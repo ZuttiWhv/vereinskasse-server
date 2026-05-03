@@ -1,7 +1,7 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.AuthResponse;
-import de.tozwhv.vereinskasse.server.dto.PinLoginRequest;
+import de.tozwhv.vereinskasse.server.dto.login.PinLoginRequest;
 import de.tozwhv.vereinskasse.server.service.PinAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
