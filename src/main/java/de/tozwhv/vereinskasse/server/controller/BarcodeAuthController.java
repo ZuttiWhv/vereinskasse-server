@@ -42,11 +42,8 @@ public class BarcodeAuthController {
         if (!appSettingsService.getSettingsInternal().isAllowBarcodeLogin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Barcode-Login ist in den Einstellungen deaktiviert.");
         }
-
         // 2. Authentifizierung via Service
-        // Der Service sucht den User zum Barcode und generiert das Token
         AuthResponse response = barcodeAuthService.verifyBarcodeAndGenerateToken(request.barcode());
-
         return ResponseEntity.ok(response);
     }
 }

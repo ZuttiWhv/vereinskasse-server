@@ -9,3 +9,5 @@ CREATE INDEX idx_product_barcode ON product (barcode);
 CREATE INDEX idx_user_barcode ON users (barcode);
 
 ALTER TABLE app_settings ADD COLUMN allow_barcode_login BOOLEAN DEFAULT FALSE;
+
+INSERT INTO PERMISSION (NAME) values ('EXPORT_USER_BARCODES');
