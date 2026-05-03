@@ -22,6 +22,7 @@ public class AppSettings {
     private boolean quickLogin;
     private boolean pinLogin;
     private boolean passwordlessLogin;
+    private boolean allowBarcodeLogin;
 
     // Standardwerte im Konstruktor
     public AppSettings() {
@@ -32,5 +33,6 @@ public class AppSettings {
         this.pinLogin = false;
         this.quickLogin = false;
         this.passwordlessLogin = false;
+        this.allowBarcodeLogin = false;
     }
 }

@@ -13,5 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     boolean existsByBillingGroup(BillingGroup billingGroup);
     Optional<User> findByBarcodeAndIsLockedFalse(String barcode);
+    Optional<User> findByBarcode(String barcode);
 }
 

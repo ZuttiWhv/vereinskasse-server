@@ -17,12 +17,11 @@ public class AppSettingsService {
     }
 
     /**
-     * Holt die aktuellen Einstellungen oder gibt Standardwerte zurück,
-     * falls noch nichts in der Datenbank steht.
+     * Holt die aktuellen Einstellungen oder gibt Standardwerte zurück.
      */
     public AppSettingsDTO getSettings() {
         AppSettings s = settingsRepository.findById(SETTINGS_ID)
-                .orElse(new AppSettings()); // Nutzt Standardwerte aus dem Konstruktor der Entity
+                .orElse(new AppSettings());
 
         return mapToDTO(s);
     }
@@ -37,11 +36,10 @@ public class AppSettingsService {
      */
     @Transactional
     public AppSettingsDTO updateSettings(AppSettingsDTO dto) {
-        // Bestehende laden oder neue Entity mit ID 1 erstellen
         AppSettings s = settingsRepository.findById(SETTINGS_ID)
                 .orElse(new AppSettings());
 
-        // Werte vom DTO in die Entity übertragen
+        // Bestehende Werte übertragen
         s.setPrimaryColor(dto.primaryColor());
         s.setSecondaryColor(dto.secondaryColor());
         s.setNavTextColor(dto.navTextColor());
@@ -50,6 +48,7 @@ public class AppSettingsService {
         s.setPinLogin(dto.pinLogin());
         s.setQuickLogin(dto.quickLogin());
         s.setPasswordlessLogin(dto.passwordlessLogin());
+        s.setAllowBarcodeLogin(dto.allowBarcodeLogin());
 
         // Speichern
         AppSettings updated = settingsRepository.save(s);
@@ -69,8 +68,8 @@ public class AppSettingsService {
                 s.getVereinName(),
                 s.isQuickLogin(),
                 s.isPinLogin(),
-                s.isPasswordlessLogin()
+                s.isPasswordlessLogin(),
+                s.isAllowBarcodeLogin() // NEU
         );
     }
 }
-

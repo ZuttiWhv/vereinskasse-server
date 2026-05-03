@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,11 +32,12 @@ public class UserService implements UserDetailsService {
     private final BillingGroupRepository billingGroupRepository;
     private final OrganisationalUnitRepository organisationalUnitRepository;
     private final PinAuthService pinAuthService;
+    private final AppSettingsService appSettingsService;
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService, AppSettingsService appSettingsService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +45,7 @@ public class UserService implements UserDetailsService {
         this.billingGroupRepository = billingGroupRepository;
         this.organisationalUnitRepository = organisationalUnitRepository;
         this.pinAuthService = pinAuthService;
+        this.appSettingsService = appSettingsService;
     }
 
     @Override
@@ -103,8 +106,13 @@ public class UserService implements UserDetailsService {
             user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
 
+
         if (dto.Barcode() !=null){
             user.setBarcode(dto.Barcode());
+        }else{
+            if (appSettingsService.getSettingsInternal().isAllowBarcodeLogin()){
+                user.setBarcode(generateUniqueBarcode());
+            }
         }
 
         return userRepository.save(user);
@@ -133,6 +141,14 @@ public class UserService implements UserDetailsService {
 
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
+    }
+
+    private String generateUniqueBarcode() {
+        String newBarcode;
+        do {
+            newBarcode = UUID.randomUUID().toString().substring(0, 10).toUpperCase();
+        } while (userRepository.findByBarcode(newBarcode).isPresent());
+        return newBarcode;
     }
 
     public User updateUser(Long id, UserRequestDTO dto) {
