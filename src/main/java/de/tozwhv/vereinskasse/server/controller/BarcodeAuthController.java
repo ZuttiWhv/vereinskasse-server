@@ -20,16 +20,6 @@ public class BarcodeAuthController {
     private final BarcodeAuthService barcodeAuthService;
     private final AppSettingsService appSettingsService;
 
-    /**
-     * Prüft, ob der Barcode-Login generell in den Systemeinstellungen aktiviert ist.
-     * Nützlich für das Frontend, um den Scanner-Listener zu aktivieren/deaktivieren.
-     */
-    @GetMapping("/enabled")
-    @PreAuthorize("hasRole('TRUSTED_DEVICE')")
-    public ResponseEntity<Boolean> isBarcodeEnabled() {
-        boolean enabled = appSettingsService.getSettingsInternal().isAllowBarcodeLogin();
-        return ResponseEntity.ok(enabled);
-    }
 
     /**
      * Endpunkt für den Login via Barcode/RFID.
