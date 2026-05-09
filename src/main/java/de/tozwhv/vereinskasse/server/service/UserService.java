@@ -151,6 +151,26 @@ public class UserService implements UserDetailsService {
         return newBarcode;
     }
 
+    public UserDTO createNewBarcodeByID(Long id){
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
+
+        user.setBarcode(generateUniqueBarcode());
+        return convertToDTO(userRepository.save(user));
+    }
+
+    public int generateBarcodeForAllUsers(){
+        int counter = 0;
+        for (User user:userRepository.findAll()){
+            if (user.getBarcode() == null){
+                user.setBarcode(generateUniqueBarcode());
+                userRepository.save(user);
+                counter +=1;
+            }
+        }
+        return counter;
+    }
+
     public User updateUser(Long id, UserRequestDTO dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));

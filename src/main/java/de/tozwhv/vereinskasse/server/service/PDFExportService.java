@@ -5,10 +5,7 @@ import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.openpdf.text.*;
-import org.openpdf.text.pdf.Barcode128;
-import org.openpdf.text.pdf.PdfPCell;
-import org.openpdf.text.pdf.PdfPTable;
-import org.openpdf.text.pdf.PdfWriter;
+import org.openpdf.text.pdf.*;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -22,47 +19,48 @@ public class PDFExportService {
 
     public byte[] generateUserBarcodePdf() {
         List<User> users = userRepository.findAll();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        // Dokument im A4 Format erstellen
-        Document document = new Document(PageSize.A4, 36, 36, 54, 36);
-        PdfWriter writer = PdfWriter.getInstance(document, out);
+        // Verwende try-with-resources für den Stream
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4, 36, 36, 54, 36);
+            PdfWriter writer = PdfWriter.getInstance(document, out);
 
-        document.open();
+            document.open();
 
-        // 1. Titel hinzufügen
-        Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
-        Paragraph title = new Paragraph("Mitglieder-Barcodes für Scanner-Login", titleFont);
-        title.setAlignment(Element.ALIGN_CENTER);
-        title.setSpacingAfter(30);
-        document.add(title);
+            // Titel
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
+            Paragraph title = new Paragraph("Mitglieder-Barcodes für Scanner-Login", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(30);
+            document.add(title);
 
-        // 2. Tabelle erstellen (3 Spalten: Name, Text, Visueller Barcode)
-        PdfPTable table = new PdfPTable(3);
-        table.setWidthPercentage(100);
-        table.setWidths(new float[]{3, 2, 4}); // Breitenverhältnis der Spalten
+            // Tabelle
+            PdfPTable table = new PdfPTable(3);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[]{3, 2, 4});
 
-        // Header setzen
-        addTableHeader(table);
+            addTableHeader(table);
 
-        // 3. Benutzerdaten und Barcodes generieren
-        for (User user : users) {
-            String code = user.getBarcode();
-            if (code != null && !code.trim().isEmpty()) {
-
-                // Spalte 1: Name
-                table.addCell(new Phrase(user.getUsername()));
-                // Spalte 2: Barcode als Klartext
-                table.addCell(new Phrase(code));
-                // Spalte 3: Der grafische Barcode
-                table.addCell(createBarcodeCell(writer, code));
+            for (User user : users) {
+                String code = user.getBarcode();
+                if (code != null && !code.trim().isEmpty()) {
+                    table.addCell(new Phrase(user.getUsername()));
+                    table.addCell(new Phrase(code));
+                    table.addCell(createBarcodeCell(writer, code));
+                }
             }
+
+            document.add(table);
+
+            // WICHTIG: Erst das Dokument schließen, dann den Stream auslesen!
+            document.close();
+            writer.close();
+
+            return out.toByteArray();
+        } catch (Exception e) {
+            // Logge den Fehler angemessen
+            throw new RuntimeException("Fehler beim Erstellen des PDFs", e);
         }
-
-        document.add(table);
-        document.close();
-
-        return out.toByteArray();
     }
 
     private void addTableHeader(PdfPTable table) {
@@ -79,20 +77,20 @@ public class PDFExportService {
     }
 
     private PdfPCell createBarcodeCell(PdfWriter writer, String code) {
-        // Code 128 ist der Standard für alphanumerische Barcodes
         Barcode128 barcode128 = new Barcode128();
         barcode128.setCode(code);
-        barcode128.setFont(null); // Wir zeigen den Text nicht unter den Strichen (ist schon in Spalte 2)
+        barcode128.setFont(null); // Entfernt den Text unter dem Barcode
 
-        // Barcode als Image für das PDF erzeugen
-        Image barcodeImage = barcode128.createImageWithBarcode(writer.getDirectContent(), null, null);
+        PdfContentByte cb = writer.getDirectContent();
+        // Das Bild wird hier generiert
+        Image barcodeImage = barcode128.createImageWithBarcode(cb, null, null);
 
-        PdfPCell cell = new PdfPCell(barcodeImage, true); // true = Bild an Zellengröße anpassen
+        // Das 'true' im Konstruktor sorgt dafür, dass das Bild in die Zelle eingepasst wird
+        PdfPCell cell = new PdfPCell(barcodeImage, true);
         cell.setPadding(5);
+        cell.setFixedHeight(40f);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cell.setFixedHeight(40f); // Einheitliche Höhe für die Zeilen
-
         return cell;
     }
 }

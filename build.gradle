@@ -41,7 +41,6 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
     implementation 'net.coobird:thumbnailator:0.4.21'
     implementation 'com.bucket4j:bucket4j_jdk8-core:8.10.1'
-// Source: https://mvnrepository.com/artifact/com.github.librepdf/openpdf
     implementation 'com.github.librepdf:openpdf:3.0.4'
 }
 
