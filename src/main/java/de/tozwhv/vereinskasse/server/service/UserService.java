@@ -139,6 +139,10 @@ public class UserService implements UserDetailsService {
             user.setPinEnabled(dto.pinEnabled());
         }
 
+        if (dto.barcodeLoginEnabled() != null){
+            user.setBarcodeLoginEnabled(dto.barcodeLoginEnabled());
+        }
+
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
     }
@@ -262,7 +266,7 @@ public class UserService implements UserDetailsService {
                 user.getOrgUnit() != null ? user.getOrgUnit().getId() : null,
                 user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung",
                 user.isPasswordlessLoginEnabled(),
-                user.getBarcode()
+                user.isBarcodeLoginEnabled()
         );
     }
 

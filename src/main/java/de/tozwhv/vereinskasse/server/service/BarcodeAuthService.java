@@ -42,6 +42,7 @@ public class BarcodeAuthService {
      * Authentifiziert einen Benutzer anhand seines Barcodes/RFID-UIDs.
      */
     public AuthResponse verifyBarcodeAndGenerateToken(String barcode) {
+
         // 1. Identifikation des Terminals für das Rate-Limiting
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String terminalKey = (auth != null) ? auth.getName() : "unknown-terminal";

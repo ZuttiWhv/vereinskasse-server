@@ -14,6 +14,6 @@ public record UserDTO(
         Long orgUnitId,
         String orgUnitName,
         Boolean passwordlessLoginEnabled,
-        String barcode
+        Boolean barcodeLoginEnabled
 ) {
 }
