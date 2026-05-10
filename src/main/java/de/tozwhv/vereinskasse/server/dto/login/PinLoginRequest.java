@@ -1,4 +1,4 @@
-package de.tozwhv.vereinskasse.server.dto;
+package de.tozwhv.vereinskasse.server.dto.login;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

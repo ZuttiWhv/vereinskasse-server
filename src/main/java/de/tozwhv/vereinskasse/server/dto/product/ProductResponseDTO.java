@@ -8,7 +8,8 @@ public record ProductResponseDTO(
         String priceString,
         String imagePath,
         CategorySummaryDTO category,
-        boolean active
+        boolean active,
+        String barcode
 ) {
     /**
      * Kompaktes DTO für die Kategorie-Info innerhalb des Produkts

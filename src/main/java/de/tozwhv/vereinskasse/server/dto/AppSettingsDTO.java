@@ -8,6 +8,7 @@ public record AppSettingsDTO(
         String vereinName,
         boolean quickLogin,
         boolean pinLogin,
-        boolean passwordlessLogin
+        boolean passwordlessLogin,
+        boolean allowBarcodeLogin
 ) {
 }

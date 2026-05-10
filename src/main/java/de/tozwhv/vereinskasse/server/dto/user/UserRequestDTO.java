@@ -1,4 +1,4 @@
-package de.tozwhv.vereinskasse.server.dto;
+package de.tozwhv.vereinskasse.server.dto.user;
 
 import java.util.List;
 
@@ -10,6 +10,7 @@ public record UserRequestDTO(
         String pin,
         Long balance,
         Long orgUnitId,
-        Boolean passwordlessLoginEnabled // NEU: Optionales Flag für Erstellung/Update
+        Boolean passwordlessLoginEnabled,
+        String Barcode
 ) {
 }

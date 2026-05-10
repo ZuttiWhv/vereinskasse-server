@@ -39,6 +39,12 @@ public class User implements UserDetails {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean passwordlessLoginEnabled;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean barcodeLoginEnabled;
+
+    @Column(unique = true) // Ein Barcode darf nur einmal im System existieren
+    private String barcode;
+
     private String pin;
 
     private boolean pinEnabled;

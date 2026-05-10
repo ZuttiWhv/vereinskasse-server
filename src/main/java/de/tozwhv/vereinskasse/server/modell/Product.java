@@ -52,6 +52,9 @@ public class Product {
     @Column(name = "deleted", nullable = false)
     private boolean deleted = false;
 
+    @Column(unique = true) // Ein Barcode darf nur einmal im System existieren
+    private String barcode;
+
 
     public String getPriceString() {
         return String.format("%.2f", price / 100.0) + " €";

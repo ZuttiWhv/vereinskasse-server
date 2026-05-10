@@ -1,4 +1,4 @@
-package de.tozwhv.vereinskasse.server.dto;
+package de.tozwhv.vereinskasse.server.dto.user;
 
 import java.util.Set;
 
@@ -13,6 +13,7 @@ public record UserDTO(
         String billingGroupName,
         Long orgUnitId,
         String orgUnitName,
-        Boolean passwordlessLoginEnabled
+        Boolean passwordlessLoginEnabled,
+        Boolean barcodeLoginEnabled
 ) {
 }

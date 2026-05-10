@@ -91,6 +91,7 @@ public class ProductService {
         product.setImagePath(dto.imagePath());
         product.setCategory(category);
         product.setActive(dto.active());
+        product.setBarcode(dto.barcode());
     }
 
     private ProductResponseDTO mapToResponseDTO(Product product) {
@@ -105,7 +106,8 @@ public class ProductService {
                         product.getCategory().getId(),
                         product.getCategory().getName()
                 ),
-                product.isActive()
+                product.isActive(),
+                product.getBarcode()
         );
     }
 }

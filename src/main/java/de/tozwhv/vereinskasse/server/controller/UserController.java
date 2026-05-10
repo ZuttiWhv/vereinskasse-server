@@ -1,8 +1,8 @@
 package de.tozwhv.vereinskasse.server.controller;
 
 import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
-import de.tozwhv.vereinskasse.server.dto.UserDTO;
-import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
@@ -14,7 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -56,6 +58,28 @@ public class UserController {
         userService.processDeposit(id, amount, auth.getName());
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{id}/generate-barcode")
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    public ResponseEntity<UserDTO> generateBarcode(@PathVariable Long id) {
+        // Die Service-Methode sollte den aktualisierten User (oder das DTO) zurückgeben
+        UserDTO updatedUser = userService.createNewBarcodeByID(id);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @PostMapping("/generate-barcodes")
+    @PreAuthorize("hasAuthority('WRITE_USER')")
+    public ResponseEntity<Map<String, Object>> generateAllBarcodes() {
+        int count = userService.generateBarcodeForAllUsers();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Barcodes erfolgreich generiert");
+        response.put("count", count);
+
+        return ResponseEntity.ok(response);
+    }
+
+
 
     //Benutzer aktualisieren
     @PutMapping("/{id}")

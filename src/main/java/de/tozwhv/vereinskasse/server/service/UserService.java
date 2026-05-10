@@ -1,8 +1,8 @@
 package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.SelfUpdateRequestDTO;
-import de.tozwhv.vereinskasse.server.dto.UserDTO;
-import de.tozwhv.vereinskasse.server.dto.UserRequestDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserDTO;
+import de.tozwhv.vereinskasse.server.dto.user.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,11 +32,12 @@ public class UserService implements UserDetailsService {
     private final BillingGroupRepository billingGroupRepository;
     private final OrganisationalUnitRepository organisationalUnitRepository;
     private final PinAuthService pinAuthService;
+    private final AppSettingsService appSettingsService;
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService) {
+                       DepositRepository depositRepository, BillingGroupRepository billingGroupRepository, OrganisationalUnitRepository organisationalUnitRepository, PinAuthService pinAuthService, AppSettingsService appSettingsService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +45,7 @@ public class UserService implements UserDetailsService {
         this.billingGroupRepository = billingGroupRepository;
         this.organisationalUnitRepository = organisationalUnitRepository;
         this.pinAuthService = pinAuthService;
+        this.appSettingsService = appSettingsService;
     }
 
     @Override
@@ -103,6 +106,15 @@ public class UserService implements UserDetailsService {
             user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
 
+
+        if (dto.Barcode() !=null){
+            user.setBarcode(dto.Barcode());
+        }else{
+            if (appSettingsService.getSettingsInternal().isAllowBarcodeLogin()){
+                user.setBarcode(generateUniqueBarcode());
+            }
+        }
+
         return userRepository.save(user);
     }
 
@@ -127,8 +139,40 @@ public class UserService implements UserDetailsService {
             user.setPinEnabled(dto.pinEnabled());
         }
 
+        if (dto.barcodeLoginEnabled() != null){
+            user.setBarcodeLoginEnabled(dto.barcodeLoginEnabled());
+        }
+
         User savedUser = userRepository.save(user);
         return convertToDTO(savedUser);
+    }
+
+    private String generateUniqueBarcode() {
+        String newBarcode;
+        do {
+            newBarcode = UUID.randomUUID().toString().substring(0, 10).toUpperCase();
+        } while (userRepository.findByBarcode(newBarcode).isPresent());
+        return newBarcode;
+    }
+
+    public UserDTO createNewBarcodeByID(Long id){
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Benutzer mit ID " + id + " nicht gefunden"));
+
+        user.setBarcode(generateUniqueBarcode());
+        return convertToDTO(userRepository.save(user));
+    }
+
+    public int generateBarcodeForAllUsers(){
+        int counter = 0;
+        for (User user:userRepository.findAll()){
+            if (user.getBarcode() == null){
+                user.setBarcode(generateUniqueBarcode());
+                userRepository.save(user);
+                counter +=1;
+            }
+        }
+        return counter;
     }
 
     public User updateUser(Long id, UserRequestDTO dto) {
@@ -161,6 +205,10 @@ public class UserService implements UserDetailsService {
             user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
         } else {
             user.setOrgUnit(null);
+        }
+
+        if (dto.Barcode() !=null){
+            user.setBarcode(dto.Barcode());
         }
 
         if (dto.billingGroupId() != null) {
@@ -217,7 +265,8 @@ public class UserService implements UserDetailsService {
                 user.getBillingGroup() != null ? user.getBillingGroup().getName() : "Keine Gruppe",
                 user.getOrgUnit() != null ? user.getOrgUnit().getId() : null,
                 user.getOrgUnit() != null ? user.getOrgUnit().getName() : "Keine Abteilung",
-                user.isPasswordlessLoginEnabled()
+                user.isPasswordlessLoginEnabled(),
+                user.isBarcodeLoginEnabled()
         );
     }
 
