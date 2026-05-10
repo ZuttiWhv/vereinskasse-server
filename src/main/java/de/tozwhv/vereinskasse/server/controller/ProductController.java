@@ -40,6 +40,17 @@ public class ProductController {
         }
     }
 
+    @GetMapping("/barcode/{barcode}")
+    @PreAuthorize("hasAuthority('READ_PRODUCT')")
+    public ResponseEntity<ProductResponseDTO> getProductByBarcode(@PathVariable String barcode) {
+        try {
+            System.out.println("Suche: " + barcode);
+            return ResponseEntity.ok(productService.getProductByBarcode(barcode));
+        } catch (Exception _) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_PRODUCT')")
     public ResponseEntity<ProductResponseDTO> createProduct(@Valid @RequestBody ProductRequestDTO dto) {
