@@ -1,6 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import de.tozwhv.vereinskasse.server.dto.AppSettingsDTO;
+import de.tozwhv.vereinskasse.server.dto.appsettings.AppSettingsDTO;
 import de.tozwhv.vereinskasse.server.service.AppSettingsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
