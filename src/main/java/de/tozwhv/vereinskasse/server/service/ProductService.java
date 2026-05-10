@@ -110,4 +110,11 @@ public class ProductService {
                 product.getBarcode()
         );
     }
+
+    public ProductResponseDTO getProductByBarcode(String barcode) {
+        Product product = productRepository.findByBarcodeAndDeletedFalse(barcode)
+                .filter(p -> !p.isDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Kein produkt zum Barcode gefunden"));
+        return mapToResponseDTO(product);
+    }
 }
