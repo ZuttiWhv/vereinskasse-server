@@ -8,6 +8,8 @@ import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -228,6 +230,24 @@ public class UserService implements UserDetailsService {
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
 
+    }
+    /**
+     * Holt den aktuell authentifizierten User direkt aus der Datenbank.
+     * @return Der User-Entity
+     * @throws ResponseStatusException 401 falls nicht eingeloggt oder 404 falls User gelöscht
+     */
+    public User getCurrentUser() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Nicht angemeldet");
+        }
+
+        return userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
     }
 
     public UserDTO getUserByUsername(String username) {

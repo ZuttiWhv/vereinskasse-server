@@ -1,0 +1,1 @@
+ALTER TABLE sales ADD COLUMN use_voucher BOOLEAN DEFAULT false;
