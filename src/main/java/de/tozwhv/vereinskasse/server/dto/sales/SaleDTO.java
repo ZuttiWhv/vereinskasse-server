@@ -1,4 +1,4 @@
-package de.tozwhv.vereinskasse.server.dto;
+package de.tozwhv.vereinskasse.server.dto.sales;
 
 import java.time.LocalDateTime;
 
@@ -10,6 +10,7 @@ public record SaleDTO(
         long productId,
         String productName,
         long userId,
-        String username
+        String username,
+        boolean useVoucher
 ) {
 }

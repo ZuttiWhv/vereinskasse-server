@@ -22,6 +22,6 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     List<Sale> findAllByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime start, LocalDateTime end);
 
     List<Sale> findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(User user, LocalDateTime start, LocalDateTime end);
-
+    List<Sale> findByCreatedAtBetweenAndUseVoucherTrue(LocalDateTime start, LocalDateTime end);
 
 }

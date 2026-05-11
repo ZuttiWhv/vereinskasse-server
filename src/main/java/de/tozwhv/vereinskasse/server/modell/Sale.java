@@ -41,6 +41,9 @@ public class Sale {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "use_voucher")
+    private boolean useVoucher = false;
+
     public Sale() {
     }
 

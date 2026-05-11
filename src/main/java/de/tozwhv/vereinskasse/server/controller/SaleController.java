@@ -1,13 +1,14 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import de.tozwhv.vereinskasse.server.dto.SaleDTO;
-import de.tozwhv.vereinskasse.server.dto.SaleRequestDTO;
+import de.tozwhv.vereinskasse.server.dto.sales.SaleDTO;
+import de.tozwhv.vereinskasse.server.dto.sales.SaleRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.SaleService;
+import de.tozwhv.vereinskasse.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -27,16 +28,16 @@ import java.util.List;
 public class SaleController {
 
     private final SaleRepository saleRepository;
-    private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final SaleService saleService;
+    private final UserService userService;
 
     @Autowired
-    public SaleController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository, SaleService saleService) {
+    public SaleController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository, SaleService saleService, UserService userService) {
         this.saleRepository = saleRepository;
-        this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.saleService = saleService;
+        this.userService = userService;
     }
 
 
@@ -65,57 +66,16 @@ public class SaleController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_ALL_SALES') or hasAuthority('WRITE_OWN_SALES')")
-    public ResponseEntity<Sale> createSale(
-            @RequestBody SaleRequestDTO dto,
-            Authentication authentication) { // currentUser entfernt, wir laden ihn selbst
+    public ResponseEntity<Sale> createSale(@RequestBody SaleRequestDTO dto, Authentication authentication) {
 
-        // 1. Validierung
-        if (dto.amount() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ungültige Daten.");
-        }
+        // User aus DB laden (wie bisher)
+        User loggedInUser = userService.getCurrentUser();
+        boolean isAdmin = hasAuthority(authentication, "WRITE_ALL_SALES");
 
-        // 2. Den aktuell angemeldeten User sicher aus der DB laden
-        // authentication.getName() liefert den Usernamen aus dem JWT/Session
-        User loggedInUser = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden."));
+        // Die komplette Magie passiert im Service
+        Sale sale = saleService.processSale(dto, loggedInUser, isAdmin);
 
-        // 3. Produkt laden
-        var product = productRepository.findById(dto.productId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produkt nicht gefunden."));
-
-        // 4. Sale Objekt bauen
-        Sale sale = new Sale();
-        sale.setProduct(product);
-        sale.setAmount(dto.amount());
-        sale.setPrice(product.getPrice() * dto.amount());
-
-// 5. Benutzer-Zuweisung mit Logik-Trennung
-        if (hasAuthority(authentication, "WRITE_ALL_SALES") && dto.userId() != null) {
-            // Admin-Modus: Buche für jemand anderen, falls eine ID mitgeliefert wurde
-            User targetUser = userRepository.findById(dto.userId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden."));
-            sale.setUser(targetUser);
-        } else {
-            // Standard-Modus ODER Admin bucht für sich selbst (keine userId im DTO)
-            sale.setUser(loggedInUser);
-        }
-
-        // 6. Guthaben-Logik mit BillingGroup
-        long combinedBalance;
-        if (sale.getUser().getBillingGroup().isAllowNegativeBalance()) {
-            combinedBalance = sale.getUser().getBalance() + sale.getUser().getBillingGroup().getCreditLimit();
-        } else {
-            combinedBalance = sale.getUser().getBalance();
-        }
-        if (combinedBalance < sale.getPrice()) {
-            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Guthaben nicht ausreichend!");
-        }
-
-
-        sale.getUser().setBalance(sale.getUser().getBalance() - sale.getPrice());
-        userRepository.save(sale.getUser());
-
-        return ResponseEntity.ok(saleRepository.save(sale));
+        return ResponseEntity.ok(sale);
     }
 
     @DeleteMapping("/{id}")
