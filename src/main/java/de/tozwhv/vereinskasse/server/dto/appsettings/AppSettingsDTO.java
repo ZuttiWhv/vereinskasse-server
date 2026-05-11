@@ -1,4 +1,4 @@
-package de.tozwhv.vereinskasse.server.dto;
+package de.tozwhv.vereinskasse.server.dto.appsettings;
 
 public record AppSettingsDTO(
         String primaryColor,
@@ -9,6 +9,7 @@ public record AppSettingsDTO(
         boolean quickLogin,
         boolean pinLogin,
         boolean passwordlessLogin,
-        boolean allowBarcodeLogin
+        boolean allowBarcodeLogin,
+        boolean showUserWithoutOuAsUser
 ) {
 }

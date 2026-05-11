@@ -1,6 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
-import de.tozwhv.vereinskasse.server.dto.AppSettingsDTO;
+import de.tozwhv.vereinskasse.server.dto.appsettings.AppSettingsDTO;
 import de.tozwhv.vereinskasse.server.modell.AppSettings;
 import de.tozwhv.vereinskasse.server.repository.SettingsRepository;
 import org.springframework.stereotype.Service;
@@ -49,6 +49,7 @@ public class AppSettingsService {
         s.setQuickLogin(dto.quickLogin());
         s.setPasswordlessLogin(dto.passwordlessLogin());
         s.setAllowBarcodeLogin(dto.allowBarcodeLogin());
+        s.setShowUserWithoutOuAsUser(dto.showUserWithoutOuAsUser());
 
         // Speichern
         AppSettings updated = settingsRepository.save(s);
@@ -69,7 +70,8 @@ public class AppSettingsService {
                 s.isQuickLogin(),
                 s.isPinLogin(),
                 s.isPasswordlessLogin(),
-                s.isAllowBarcodeLogin() // NEU
+                s.isAllowBarcodeLogin(),
+                s.isShowUserWithoutOuAsUser()
         );
     }
 }
