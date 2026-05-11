@@ -6,7 +6,8 @@ public record OrgTreeResponseDTO(
         Long id,
         String name,
         List<OrgTreeResponseDTO> subUnits,
-        List<String> usernames // Nur die Namen für die Auswahl-Buttons
+        List<String> usernames,
+        boolean isUser //
 ) {
 }
 

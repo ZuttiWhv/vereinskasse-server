@@ -19,34 +19,48 @@ public class OrganisationalUnitService {
 
     private final OrganisationalUnitRepository orgUnitRepository;
     private final UserRepository userRepository;
+    private final AppSettingsService appSettingsService;
 
     /**
      * Liefert den kompletten Baum aller Abteilungen und deren User.
-     * Ergänzt eine virtuelle Gruppe für User ohne OU-Zuordnung.
+     * Berücksichtigt die Einstellung, ob User ohne OU flach oder gruppiert angezeigt werden.
      */
     @Transactional(readOnly = true)
     public List<OrgTreeResponseDTO> getFullOrgTree() {
-        // 1. Alle echten Root-Einheiten (parent_id IS NULL) abrufen und konvertieren
+        // 1. Echte Root-OUs laden
         List<OrganisationalUnit> rootUnits = orgUnitRepository.findByParentIsNull();
         List<OrgTreeResponseDTO> tree = new ArrayList<>(rootUnits.stream()
                 .map(this::convertToTreeResponse)
-                .collect(Collectors.toList()));
+                .toList());
 
-        // 2. User finden, die KEINER Organisationseinheit zugeordnet sind
-        List<String> unassignedUsernames = userRepository.findByOrgUnitIdIsNull()
-                .stream()
-                .map(User::getUsername)
-                .sorted()
-                .toList();
+        // 2. Einstellung aus den AppSettings abrufen
+        boolean showAsFlatUser = appSettingsService.getSettingsInternal().isShowUserWithoutOuAsUser();
 
-        // 3. Virtuellen Knoten hinzufügen, falls es nicht zugeordnete User gibt
-        if (!unassignedUsernames.isEmpty()) {
-            tree.add(new OrgTreeResponseDTO(
-                    -1L,                // Statische ID für "Nicht zugeordnet"
-                    "Nicht zugeordnet",  // Anzeigename im Tree
-                    List.of(),          // Keine Sub-Einheiten
-                    unassignedUsernames // Die Liste der Usernamen
-            ));
+        // 3. User ohne OU holen
+        List<User> unassignedUsers = userRepository.findByOrgUnitIdIsNull();
+
+        if (!unassignedUsers.isEmpty()) {
+            if (showAsFlatUser) {
+                // OPTION A: Jeden User einzeln als "isUser = true" auf die oberste Ebene
+                for (User user : unassignedUsers) {
+                    tree.add(new OrgTreeResponseDTO(
+                            null,
+                            user.getUsername(),
+                            List.of(),
+                            List.of(),
+                            true  // Kennzeichnung als User
+                    ));
+                }
+            } else {
+                // OPTION B: Alle in eine Pseudo-OU bündeln (isUser = false)
+                tree.add(new OrgTreeResponseDTO(
+                        -1L,
+                        "Nicht zugeordnet",
+                        List.of(),
+                        unassignedUsers.stream().map(User::getUsername).sorted().toList(),
+                        false // Kennzeichnung als Gruppe
+                ));
+            }
         }
 
         return tree;
@@ -56,12 +70,12 @@ public class OrganisationalUnitService {
      * Rekursive Hilfsmethode zur Konvertierung einer Entity in ein Baum-DTO.
      */
     private OrgTreeResponseDTO convertToTreeResponse(OrganisationalUnit unit) {
-        // Rekursiver Aufruf für alle Unterabteilungen (Kinder)
+        // Rekursiver Aufruf für Unterabteilungen
         List<OrgTreeResponseDTO> subUnits = unit.getSubUnits().stream()
                 .map(this::convertToTreeResponse)
                 .collect(Collectors.toList());
 
-        // Extrahiere die Benutzernamen der direkt dieser Einheit zugeordneten User
+        // Direkt zugeordnete User dieser Einheit
         List<String> usernames = unit.getUsers().stream()
                 .map(User::getUsername)
                 .sorted()
@@ -71,7 +85,8 @@ public class OrganisationalUnitService {
                 unit.getId(),
                 unit.getName(),
                 subUnits,
-                usernames
+                usernames,
+                false // Eine OU ist niemals ein einzelner User-Knoten
         );
     }
 
@@ -93,7 +108,7 @@ public class OrganisationalUnitService {
     }
 
     /**
-     * Gibt alle Organisationseinheiten als flache Liste zurück (z.B. für Dropdowns).
+     * Gibt alle Organisationseinheiten als flache Liste zurück.
      */
     public List<OrganisationalUnit> getAllUnitsFlat() {
         return orgUnitRepository.findAll();
@@ -104,8 +119,6 @@ public class OrganisationalUnitService {
      */
     @Transactional
     public void deleteUnit(Long id) {
-        // Hinweis: Hier könnte man prüfen, ob noch User zugeordnet sind,
-        // bevor man das Löschen zulässt.
         orgUnitRepository.deleteById(id);
     }
 }
