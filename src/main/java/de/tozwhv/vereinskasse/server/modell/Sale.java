@@ -47,15 +47,6 @@ public class Sale {
     @Column(name = "is_voucher")
     private boolean isVoucher = false;
 
-    public Sale() {
-    }
-
-    public Sale(int price, int amount, Product product, User user) {
-        this.price = price;
-        this.amount = amount;
-        this.product = product;
-        this.user = user;
-    }
-
+    public Sale() {}
 }
 
