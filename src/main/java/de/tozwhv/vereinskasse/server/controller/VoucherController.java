@@ -1,6 +1,6 @@
 package de.tozwhv.vereinskasse.server.controller;
 
-import de.tozwhv.vereinskasse.server.dto.PrepaidVoucherDTO;
+import de.tozwhv.vereinskasse.server.dto.voucher.PrepaidVoucherDTO;
 import de.tozwhv.vereinskasse.server.dto.voucher.IssueVoucherRequest;
 import de.tozwhv.vereinskasse.server.dto.voucher.VoucherStatsDTO;
 import de.tozwhv.vereinskasse.server.service.VoucherService;
