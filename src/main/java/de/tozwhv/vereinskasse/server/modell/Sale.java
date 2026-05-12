@@ -44,6 +44,9 @@ public class Sale {
     @Column(name = "use_voucher")
     private boolean useVoucher = false;
 
+    @Column(name = "is_voucher")
+    private boolean isVoucher = false;
+
     public Sale() {
     }
 
