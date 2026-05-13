@@ -1,5 +1,6 @@
 package de.tozwhv.vereinskasse.server.service;
 
+import de.tozwhv.vereinskasse.server.dto.sales.SaleRequestDTO;
 import de.tozwhv.vereinskasse.server.dto.voucher.PrepaidVoucherDTO;
 import de.tozwhv.vereinskasse.server.dto.voucher.IssueVoucherRequest;
 import de.tozwhv.vereinskasse.server.dto.voucher.VoucherStatsDTO;
@@ -25,33 +26,30 @@ public class VoucherService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final SaleRepository saleRepository;
+    private final SaleService saleService;
 
     @Transactional
-    public void issueVoucher(IssueVoucherRequest request) {
+    public void issueVoucher(IssueVoucherRequest request, boolean isAdmin) {
         User giver = userService.getCurrentUser();
         Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new RuntimeException("Produkt nicht gefunden"));
 
-        // 1. Geld beim Spender abbuchen (Direkt über das User-Objekt)
-        int totalCost = product.getPrice() * request.quantity();
+       // 1. Verkauf buchen
 
-        // Prüfung, ob Spender genug Geld hat (einfache Version)
-        if (giver.getBalance() < totalCost) {
-            throw new RuntimeException("Guthaben für diese Runde nicht ausreichend!");
+        SaleRequestDTO saleRequestDTO =
+                new SaleRequestDTO(request.productId(), request.quantity(), giver.getId(), false,true);
+        if (saleService.processSale(saleRequestDTO,giver, isAdmin) != null){
+            // 2. Voucher-Kontingent erstellen
+            PrepaidVoucher voucher = new PrepaidVoucher();
+            voucher.setGiver(giver);
+            voucher.setProduct(product);
+            voucher.setTotalQuantity(request.quantity());
+            voucher.setRemainingQuantity(request.quantity());
+            voucher.setReason(request.reason());
+            voucherRepository.save(voucher);
+        }else{
+            throw new RuntimeException("Gutschein konnte nicht angelegt werden");
         }
-
-        giver.setBalance(giver.getBalance() - totalCost);
-        userRepository.save(giver);
-
-        // 2. Voucher-Kontingent erstellen
-        PrepaidVoucher voucher = new PrepaidVoucher();
-        voucher.setGiver(giver);
-        voucher.setProduct(product);
-        voucher.setTotalQuantity(request.quantity());
-        voucher.setRemainingQuantity(request.quantity());
-        voucher.setReason(request.reason());
-
-        voucherRepository.save(voucher);
     }
 
     @Transactional

@@ -31,9 +31,9 @@ public class SaleService {
      * Prüft, ob ein Freigetränk (Voucher) genutzt werden soll oder ob vom Guthaben abgebucht wird.
      */
     @Transactional
-    public Sale processSale(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
+    public SaleDTO processSale(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
         // 1. Ziel-Benutzer bestimmen (Admin darf für andere buchen)
-        User targetUser = determineTargetUser(dto, loggedInUser, isAdmin);
+        User targetUser = determineTargetUser(dto, loggedInUser,isAdmin);
 
         // 2. Produkt laden
         Product product = productRepository.findById(dto.productId())
@@ -68,7 +68,7 @@ public class SaleService {
         }
 
         // 4. Verkauf in der Historie speichern
-        return saleRepository.save(sale);
+        return convertToDTO(saleRepository.save(sale));
     }
 
     /**
@@ -93,6 +93,7 @@ public class SaleService {
     }
 
     private User determineTargetUser(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
+
         if (isAdmin && dto.userId() != null) {
             return userRepository.findById(dto.userId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ziel-Benutzer nicht gefunden."));
@@ -118,7 +119,8 @@ public class SaleService {
                 sale.getProduct().getAnzeigename() != null ? sale.getProduct().getAnzeigename() : sale.getProduct().getName(),
                 sale.getUser().getId(),
                 sale.getUser().getUsername(),
-                sale.isUseVoucher() // Falls das DTO auch angepasst wurde, hier mitgeben
+                sale.isUseVoucher(),
+                sale.isVoucher()
         );
     }
 }
