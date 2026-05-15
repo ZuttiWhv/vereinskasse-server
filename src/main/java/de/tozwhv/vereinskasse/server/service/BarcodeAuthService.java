@@ -2,6 +2,7 @@ package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.config.JwtProvider;
 import de.tozwhv.vereinskasse.server.dto.AuthResponse;
+import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import io.github.bucket4j.Bucket;
@@ -43,6 +44,7 @@ public class BarcodeAuthService {
      */
     public AuthResponse verifyBarcodeAndGenerateToken(String barcode) {
 
+
         // 1. Identifikation des Terminals für das Rate-Limiting
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String terminalKey = (auth != null) ? auth.getName() : "unknown-terminal";
@@ -62,11 +64,16 @@ public class BarcodeAuthService {
                     "Barcode-Login nur an autorisierten Terminals möglich.");
         }
 
-        // 3. User anhand des Barcodes in der DB suchen
+        // User anhand des Barcodes in der DB suchen
         User user = userRepository.findByBarcodeAndIsLockedFalse(barcode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Ungültiger Barcode oder Benutzer nicht gefunden."));
 
+
+        if (user.getRoles().stream().anyMatch(Role::isForcePasswordLogin)){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Barcode-Login für diesen Account nicht möglich.");
+        }
 
         if (!user.isBarcodeLoginEnabled()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,

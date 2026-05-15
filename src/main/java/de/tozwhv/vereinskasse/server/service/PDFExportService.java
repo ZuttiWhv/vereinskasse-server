@@ -1,6 +1,7 @@
 package de.tozwhv.vereinskasse.server.service;
 
 
+import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,8 @@ public class PDFExportService {
 
     public byte[] generateUserBarcodePdf() {
         List<User> users = userRepository.findAll();
+        users.removeIf(user -> user.getRoles().stream()
+                .anyMatch(Role::isForcePasswordLogin));
 
         // Verwende try-with-resources für den Stream
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

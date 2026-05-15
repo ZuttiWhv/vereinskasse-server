@@ -23,6 +23,7 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Diese Zeile ändern!
     private Long id;
     private String name;
+    private boolean forcePasswordLogin = false;
 
     @ManyToMany(fetch = EAGER)
     @JoinTable(
