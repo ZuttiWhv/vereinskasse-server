@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -36,8 +37,9 @@ public class VoucherController {
      */
     @PostMapping("/issue")
     @PreAuthorize("hasAuthority('WRITE_OWN_SALES')")
-    public ResponseEntity<Void> issueVoucher(@RequestBody IssueVoucherRequest request) {
-        voucherService.issueVoucher(request);
+    public ResponseEntity<Void> issueVoucher(@RequestBody IssueVoucherRequest request, Authentication authentication) {
+        boolean isAdmin = hasAuthority(authentication, "WRITE_ALL_SALES");
+        voucherService.issueVoucher(request,isAdmin);
         return ResponseEntity.ok().build();
     }
 
@@ -50,4 +52,11 @@ public class VoucherController {
     public ResponseEntity<List<PrepaidVoucherDTO>> getAvailableVouchers() {
         return ResponseEntity.ok(voucherService.getAvailableVouchers());
     }
+
+    // Hilfsmethode zur Rollenprüfung
+    private boolean hasAuthority(Authentication auth, String authority) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(authority));
+    }
+
 }

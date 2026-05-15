@@ -4,7 +4,6 @@ import de.tozwhv.vereinskasse.server.dto.sales.SaleDTO;
 import de.tozwhv.vereinskasse.server.dto.sales.SaleRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
-import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.SaleService;
@@ -33,7 +32,7 @@ public class SaleController {
     private final UserService userService;
 
     @Autowired
-    public SaleController(SaleRepository saleRepository, ProductRepository productRepository, UserRepository userRepository, SaleService saleService, UserService userService) {
+    public SaleController(SaleRepository saleRepository, UserRepository userRepository, SaleService saleService, UserService userService) {
         this.saleRepository = saleRepository;
         this.userRepository = userRepository;
         this.saleService = saleService;
@@ -66,14 +65,10 @@ public class SaleController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_ALL_SALES') or hasAuthority('WRITE_OWN_SALES')")
-    public ResponseEntity<Sale> createSale(@RequestBody SaleRequestDTO dto, Authentication authentication) {
-
-        // User aus DB laden (wie bisher)
-        User loggedInUser = userService.getCurrentUser();
+    public ResponseEntity<SaleDTO> createSale(@RequestBody SaleRequestDTO dto, Authentication authentication) {
         boolean isAdmin = hasAuthority(authentication, "WRITE_ALL_SALES");
-
-        // Die komplette Magie passiert im Service
-        Sale sale = saleService.processSale(dto, loggedInUser, isAdmin);
+        User loggedInUser = userService.getCurrentUser();
+        SaleDTO sale = saleService.processSale(dto, loggedInUser, isAdmin);
 
         return ResponseEntity.ok(sale);
     }

@@ -11,6 +11,7 @@ public record SaleDTO(
         String productName,
         long userId,
         String username,
-        boolean useVoucher
+        boolean useVoucher,
+        boolean isVoucher
 ) {
 }

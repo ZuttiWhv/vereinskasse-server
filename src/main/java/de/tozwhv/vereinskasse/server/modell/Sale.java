@@ -44,15 +44,9 @@ public class Sale {
     @Column(name = "use_voucher")
     private boolean useVoucher = false;
 
-    public Sale() {
-    }
+    @Column(name = "is_voucher")
+    private boolean isVoucher = false;
 
-    public Sale(int price, int amount, Product product, User user) {
-        this.price = price;
-        this.amount = amount;
-        this.product = product;
-        this.user = user;
-    }
-
+    public Sale() {}
 }
 

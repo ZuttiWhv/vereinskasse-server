@@ -26,24 +26,24 @@ public class VoucherService {
     private final UserService userService;
     private final SaleRepository saleRepository;
 
+    // NEU: Nutzt jetzt den AccountingService statt den SaleService
+    private final AccountingService accountingService;
+
+    /**
+     * Erstellt ein neues Gutschein-Kontingent (eine "Runde").
+     * Der Betrag wird dem Spender sofort über den AccountingService abgezogen.
+     */
     @Transactional
-    public void issueVoucher(IssueVoucherRequest request) {
+    public void issueVoucher(IssueVoucherRequest request, boolean isAdmin) {
         User giver = userService.getCurrentUser();
         Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new RuntimeException("Produkt nicht gefunden"));
 
-        // 1. Geld beim Spender abbuchen (Direkt über das User-Objekt)
-        int totalCost = product.getPrice() * request.quantity();
+        // 1. Finanziellen Teil über den AccountingService abwickeln
+        // Das prüft das Guthaben, zieht das Geld ab und erstellt einen Sale-Eintrag (isVoucher = true)
+        accountingService.bookVoucherPurchase(giver, product, request.quantity());
 
-        // Prüfung, ob Spender genug Geld hat (einfache Version)
-        if (giver.getBalance() < totalCost) {
-            throw new RuntimeException("Guthaben für diese Runde nicht ausreichend!");
-        }
-
-        giver.setBalance(giver.getBalance() - totalCost);
-        userRepository.save(giver);
-
-        // 2. Voucher-Kontingent erstellen
+        // 2. Das Gutschein-Kontingent in der Datenbank hinterlegen
         PrepaidVoucher voucher = new PrepaidVoucher();
         voucher.setGiver(giver);
         voucher.setProduct(product);
@@ -54,9 +54,13 @@ public class VoucherService {
         voucherRepository.save(voucher);
     }
 
+    /**
+     * Reduziert den Bestand eines verfügbaren Gutscheins.
+     * Wird vom SaleService aufgerufen, wenn jemand "Gutschein nutzen" wählt.
+     */
     @Transactional
     public void redeemVoucher(User consumer, Product product) {
-        // Suche den ältesten verfügbaren Voucher (FIFO)
+        // Suche den ältesten verfügbaren Voucher für dieses Produkt (FIFO-Prinzip)
         PrepaidVoucher voucher = voucherRepository
                 .findFirstByProductAndRemainingQuantityGreaterThanOrderByCreatedAtAsc(product, 0)
                 .orElseThrow(() -> new RuntimeException("Keine Freigetränke mehr verfügbar!"));
@@ -65,40 +69,45 @@ public class VoucherService {
         voucher.setRemainingQuantity(voucher.getRemainingQuantity() - 1);
         voucherRepository.save(voucher);
 
-        // 2. Dokumentation der Einlösung (Das ist unsere "Statistik")
+        // 2. Einlösung für die Statistik dokumentieren
         VoucherRedemption redemption = new VoucherRedemption();
         redemption.setVoucher(voucher);
         redemption.setConsumer(consumer);
         redemptionRepository.save(redemption);
-
-        // Hinweis: Wir brauchen hier keine transactionService.logFreeConsumption mehr,
-        // da der SaleService sowieso einen 0€ Sale für die Historie anlegt.
     }
 
+    /**
+     * Listet alle noch nicht aufgebrauchten Gutscheine auf.
+     */
+    @Transactional(readOnly = true)
     public List<PrepaidVoucherDTO> getAvailableVouchers() {
         return voucherRepository.findByRemainingQuantityGreaterThan(0).stream()
                 .map(v -> new PrepaidVoucherDTO(
                         v.getProduct().getId(),
-                        v.getProduct().getName(),
+                        v.getProduct().getAnzeigename() != null ? v.getProduct().getAnzeigename() : v.getProduct().getName(),
                         v.getRemainingQuantity(),
                         v.getGiver().getUsername(),
                         v.getReason()
                 )).toList();
     }
 
+    /**
+     * Erstellt eine Übersicht, wer wie viel spendiert und wer wie viel eingelöst hat.
+     */
+    @Transactional(readOnly = true)
     public List<VoucherStatsDTO> getVoucherStatistics(LocalDate from, LocalDate to) {
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.atTime(LocalTime.MAX);
 
-        // 1. Alle Daten für den Zeitraum laden
+        // 1. Daten für den Zeitraum laden
         List<PrepaidVoucher> allIssued = voucherRepository.findByCreatedAtBetween(start, end);
         List<Sale> allRedeemed = saleRepository.findByCreatedAtBetweenAndUseVoucherTrue(start, end);
         List<User> users = userRepository.findAll();
 
-        // 2. Pro Benutzer die Summen berechnen
+        // 2. Statistiken pro Benutzer aggregieren
         return users.stream()
                 .map(user -> {
-                    // Was hat dieser User ausgegeben (Giver)?
+                    // Summe der ausgegebenen Gutscheine (Giver)
                     long issuedVal = allIssued.stream()
                             .filter(v -> v.getGiver().getId().equals(user.getId()))
                             .mapToLong(v -> (long) v.getTotalQuantity() * v.getProduct().getPrice())
@@ -109,7 +118,7 @@ public class VoucherService {
                             .mapToLong(PrepaidVoucher::getTotalQuantity)
                             .sum();
 
-                    // Was hat dieser User eingelöst (Consumer)?
+                    // Summe der eingelösten Gutscheine (Consumer)
                     long redeemedVal = allRedeemed.stream()
                             .filter(s -> s.getUser().getId().equals(user.getId()))
                             .mapToLong(s -> (long) s.getAmount() * s.getProduct().getPrice())
@@ -129,9 +138,7 @@ public class VoucherService {
                             redeemedCount
                     );
                 })
-                // Nur User anzeigen, die in diesem Zeitraum aktiv waren
                 .filter(dto -> dto.issuedCount() > 0 || dto.redeemedCount() > 0)
-                // Sortierung: Wer am meisten spendiert hat zuerst
                 .sorted(Comparator.comparingLong(VoucherStatsDTO::totalIssuedValue).reversed())
                 .toList();
     }

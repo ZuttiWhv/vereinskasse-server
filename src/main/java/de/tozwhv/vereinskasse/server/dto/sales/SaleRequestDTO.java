@@ -4,7 +4,8 @@ public record SaleRequestDTO(
         Long productId,
         Integer amount,
         Long userId,
-        Boolean useVoucher // Hier das 'B' großschreiben!
+        Boolean useVoucher,
+        Boolean isVoucher
 ) {
     public SaleRequestDTO {
         if (useVoucher == null) useVoucher = false;

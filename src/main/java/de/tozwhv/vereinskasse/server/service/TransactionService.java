@@ -41,14 +41,21 @@ public class TransactionService {
         List<TransactionDTO> history = new ArrayList<>();
 
         // 2. Sales konvertieren (Multipliziere Menge * Preis für totalPrice)
-        sales.forEach(s -> history.add(new TransactionDTO(
-                s.getId(),
-                "SALE",
-                s.getProduct().getName(),
-                s.getAmount(),
-                s.getPrice(), // Gesammtsumme der Transaktion liegt bereits vor
-                s.getCreatedAt()
-        )));
+
+
+        sales.forEach(s -> {
+            String type = "SALE";
+            if (s.isUseVoucher()) type="REDEEM";
+            if (s.isVoucher()) type="VOUCHER";
+            history.add(new TransactionDTO(
+                    s.getId(),
+                    type,
+                    s.getProduct().getName(),
+                    s.getAmount(),
+                    s.getPrice(), // Gesammtsumme der Transaktion liegt bereits vor
+                    s.getCreatedAt()
+            ));
+        });
 
         // 3. Deposits konvertieren
         deposits.forEach(d -> history.add(new TransactionDTO(

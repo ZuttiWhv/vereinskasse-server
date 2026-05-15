@@ -2,9 +2,9 @@ package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.dto.sales.SaleDTO;
 import de.tozwhv.vereinskasse.server.dto.sales.SaleRequestDTO;
+import de.tozwhv.vereinskasse.server.modell.Product;
 import de.tozwhv.vereinskasse.server.modell.Sale;
 import de.tozwhv.vereinskasse.server.modell.User;
-import de.tozwhv.vereinskasse.server.modell.Product;
 import de.tozwhv.vereinskasse.server.repository.ProductRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
@@ -24,51 +24,39 @@ public class SaleService {
     private final SaleRepository saleRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+
+    // Die beiden Services für die Fachlogik
     private final VoucherService voucherService;
+    private final AccountingService accountingService;
 
     /**
      * Verarbeitet einen Verkauf.
-     * Prüft, ob ein Freigetränk (Voucher) genutzt werden soll oder ob vom Guthaben abgebucht wird.
+     * Entscheidet basierend auf dem DTO, ob ein Gutschein genutzt oder Guthaben belastet wird.
      */
     @Transactional
-    public Sale processSale(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
-        // 1. Ziel-Benutzer bestimmen (Admin darf für andere buchen)
+    public SaleDTO processSale(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
+        // 1. Stammdaten laden
         User targetUser = determineTargetUser(dto, loggedInUser, isAdmin);
-
-        // 2. Produkt laden
         Product product = productRepository.findById(dto.productId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produkt nicht gefunden."));
 
-        Sale sale = new Sale();
-        sale.setProduct(product);
-        sale.setAmount(dto.amount());
-        sale.setUser(targetUser);
+        Sale savedSale;
 
-        // --- NEU: Flag für die Statistik setzen ---
-        sale.setUseVoucher(dto.useVoucher());
-
-        // 3. Logik-Trennung: Voucher vs. Guthaben
+        // 2. Logik-Trennung: Gutschein vs. Guthaben
         if (dto.useVoucher()) {
-            // Freigetränk einlösen (Voucher-Bestand reduzieren)
-            // Hinweis: Wir nutzen hier dto.amount(), falls ein User mehrere Voucher gleichzeitig einlöst
+            // A: Gutschein einlösen
+            // Zuerst die Logik im VoucherService (Bestand prüfen/reduzieren)
             voucherService.redeemVoucher(targetUser, product);
 
-            // Für die Buchhaltung/Historie bleibt der Zahlpreis 0
-            sale.setPrice(0);
+            // Dann die Buchung im AccountingService (erstellt den 0€ Sale-Eintrag)
+            savedSale = accountingService.bookVoucherRedemption(targetUser, product, dto.amount());
         } else {
-            // Regulärer Kauf: Preis berechnen und Guthaben prüfen
-            int totalPrice = product.getPrice() * dto.amount();
-            validateBalance(targetUser, totalPrice);
-
-            // Abbuchen und Speichern des neuen Kontostands
-            targetUser.setBalance(targetUser.getBalance() - totalPrice);
-            userRepository.save(targetUser);
-
-            sale.setPrice(totalPrice);
+            // B: Regulärer Kauf
+            // Der AccountingService prüft das Guthaben und zieht den Betrag ab
+            savedSale = accountingService.bookRegularSale(targetUser, product, dto.amount());
         }
 
-        // 4. Verkauf in der Historie speichern
-        return saleRepository.save(sale);
+        return convertToDTO(savedSale);
     }
 
     /**
@@ -76,22 +64,22 @@ public class SaleService {
      */
     @Transactional(readOnly = true)
     public List<SaleDTO> getSalesFiltered(User currentUser, LocalDateTime start, LocalDateTime end, boolean isAdmin) {
-        List<Sale> sales;
+        // Standard-Zeitraum setzen, falls nicht angegeben
+        LocalDateTime finalStart = (start == null) ? LocalDateTime.now().minusYears(100) : start;
+        LocalDateTime finalEnd = (end == null) ? LocalDateTime.now() : end;
 
-        if (start == null) start = LocalDateTime.now().minusYears(100);
-        if (end == null) end = LocalDateTime.now();
-
-        if (isAdmin) {
-            sales = saleRepository.findAllByCreatedAtBetweenOrderByCreatedAtDesc(start, end);
-        } else {
-            sales = saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(currentUser, start, end);
-        }
+        List<Sale> sales = isAdmin
+                ? saleRepository.findAllByCreatedAtBetweenOrderByCreatedAtDesc(finalStart, finalEnd)
+                : saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(currentUser, finalStart, finalEnd);
 
         return sales.stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
+    /**
+     * Hilfsmethode: Bestimmt, für wen die Buchung durchgeführt wird.
+     */
     private User determineTargetUser(SaleRequestDTO dto, User loggedInUser, boolean isAdmin) {
         if (isAdmin && dto.userId() != null) {
             return userRepository.findById(dto.userId())
@@ -100,14 +88,9 @@ public class SaleService {
         return loggedInUser;
     }
 
-    private void validateBalance(User user, double requiredAmount) {
-        // Prüfung unter Berücksichtigung des Kreditlimits der BillingGroup
-        long creditLimit = user.getBillingGroup().isAllowNegativeBalance() ? user.getBillingGroup().getCreditLimit() : 0;
-        if ((user.getBalance() + creditLimit) < requiredAmount) {
-            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Guthaben nicht ausreichend!");
-        }
-    }
-
+    /**
+     * Mapping von Entity zu DTO.
+     */
     private SaleDTO convertToDTO(Sale sale) {
         return new SaleDTO(
                 sale.getId(),
@@ -118,7 +101,8 @@ public class SaleService {
                 sale.getProduct().getAnzeigename() != null ? sale.getProduct().getAnzeigename() : sale.getProduct().getName(),
                 sale.getUser().getId(),
                 sale.getUser().getUsername(),
-                sale.isUseVoucher() // Falls das DTO auch angepasst wurde, hier mitgeben
+                sale.isUseVoucher(),
+                sale.isVoucher()
         );
     }
 }
