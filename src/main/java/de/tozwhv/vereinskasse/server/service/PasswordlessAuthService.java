@@ -2,6 +2,7 @@ package de.tozwhv.vereinskasse.server.service;
 
 import de.tozwhv.vereinskasse.server.config.JwtProvider;
 import de.tozwhv.vereinskasse.server.dto.AuthResponse;
+import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import io.github.bucket4j.Bucket;
@@ -49,10 +50,15 @@ public class PasswordlessAuthService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TRUSTED_DEVICE"));
 
         if (!isTrustedDevice) return false;
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) return false;
 
-        return userRepository.findByUsername(username)
-                .map(User::isPasswordlessLoginEnabled)
-                .orElse(false);
+        if (user.getRoles().stream().anyMatch(Role::isForcePasswordLogin)){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Barcode-Login für diesen Account nicht möglich.");
+        }
+
+        return user.isPasswordlessLoginEnabled();
     }
 
     /**
@@ -79,6 +85,11 @@ public class PasswordlessAuthService {
         // 3. User laden und prüfen, ob Flag in DB gesetzt ist
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
+
+        if (user.getRoles().stream().anyMatch(Role::isForcePasswordLogin)){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Passwortfreier-Login für diesen Account nicht möglich.");
+        }
 
         if (!user.isPasswordlessLoginEnabled()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,

@@ -1,13 +1,18 @@
 package de.tozwhv.vereinskasse.server.controller;
 
+import de.tozwhv.vereinskasse.server.dto.role.RoleDTO;
+import de.tozwhv.vereinskasse.server.modell.Permission;
 import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/roles")
@@ -32,22 +37,44 @@ public class RoleController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('WRITE_ROLE')")
-    public Role createRole(@RequestBody Role role) {
+    @Transactional
+    public Role createRole(@RequestBody RoleDTO dto) {
+        Role role = new Role();
+        mapDtoToEntity(dto, role);
         return roleRepository.save(role);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('WRITE_ROLE')")
-    public ResponseEntity<Role> updateRole(@PathVariable Long id, @RequestBody Role roleDetails) {
+    @Transactional
+    public ResponseEntity<Role> updateRole(@PathVariable Long id, @RequestBody RoleDTO dto) {
         return roleRepository.findById(id)
                 .map(role -> {
-                    role.setName(roleDetails.getName());
-                    role.setPermissions(roleDetails.getPermissions());
+                    mapDtoToEntity(dto, role);
                     return ResponseEntity.ok(roleRepository.save(role));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Hilfsmethode zum Mapping vom Record auf die Entity
+     */
+    private void mapDtoToEntity(RoleDTO dto, Role role) {
+        role.setName(dto.name());
+        role.setForcePasswordLogin(dto.forcePasswordLogin());
+
+        // Berechtigungen mappen
+        if (dto.permissions() != null) {
+            Set<Permission> permissions = dto.permissions().stream()
+                    .map(p -> {
+                        Permission perm = new Permission();
+                        perm.setId(p.id());
+                        return perm;
+                    })
+                    .collect(Collectors.toSet());
+            role.setPermissions(permissions);
+        }
+    }
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('DELETE_ROLE')")
     public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
