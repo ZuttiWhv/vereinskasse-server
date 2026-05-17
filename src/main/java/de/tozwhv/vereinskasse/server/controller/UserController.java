@@ -109,10 +109,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('DELETE_USER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        if (userRepository.existsById(id)) {
-            userRepository.deleteById(id);
+            userService.softDeleteUser(id);
             return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
     }
 }
