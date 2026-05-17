@@ -1,5 +1,7 @@
 package de.tozwhv.vereinskasse.server.dto.product;
 
+import java.util.Set;
+
 public record ProductResponseDTO(
         Long id,
         String name,
@@ -9,7 +11,7 @@ public record ProductResponseDTO(
         String imagePath,
         CategorySummaryDTO category,
         boolean active,
-        String barcode
+        Set<String> barcodes
 ) {
     /**
      * Kompaktes DTO für die Kategorie-Info innerhalb des Produkts
