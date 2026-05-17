@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,10 +22,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
 
-    /**
-     * Holt alle Produkte, die nicht gelöscht sind.
-     * @param onlyActive Wenn true, werden nur vorrätige Produkte geliefert.
-     */
     public List<ProductResponseDTO> getAllProducts(boolean onlyActive) {
         return productRepository.findAllByDeletedFalse().stream()
                 .filter(p -> !onlyActive || p.isActive())
@@ -71,9 +68,6 @@ public class ProductService {
         return mapToResponseDTO(productRepository.save(product));
     }
 
-    /**
-     * Markiert ein Produkt als gelöscht (Soft-Delete).
-     */
     @Transactional
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
@@ -82,16 +76,47 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    public ProductResponseDTO getProductByBarcode(String barcode) {
+        Product product = productRepository.findByBarcodesContainingAndDeletedFalse(barcode)
+                .filter(p -> !p.isDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("Kein produkt zum Barcode gefunden"));
+        return mapToResponseDTO(product);
+    }
+
     // --- Helper Methoden ---
 
     private void updateProductFields(Product product, ProductRequestDTO dto, Category category) {
+        // NEU: Validierung triggern, bevor irgendwas in die Entity geschrieben wird!
+        validateBarcodes(dto.barcodes());
+
         product.setName(dto.name());
         product.setAnzeigename(dto.anzeigename());
         product.setPrice(dto.price());
         product.setImagePath(dto.imagePath());
         product.setCategory(category);
         product.setActive(dto.active());
-        product.setBarcode(dto.barcode());
+        product.setBarcodes(dto.barcodes());
+    }
+
+    /**
+     * NEU: Überprüft die übergebenen Barcodes auf korrekte EAN-Ziffern und Längen (8 oder 13).
+     */
+    private void validateBarcodes(Collection<String> barcodes) {
+        if (barcodes != null) {
+            for (String barcode : barcodes) {
+                String trimmed = barcode.trim();
+
+                // Besteht der Code nur aus Zahlen?
+                if (!trimmed.matches("\\d+")) {
+                    throw new IllegalArgumentException("Barcode '" + barcode + "' ist ungültig! Nur Ziffern (0-9) erlaubt.");
+                }
+
+                // Entspricht die Länge der EAN-Norm?
+                if (trimmed.length() != 8 && trimmed.length() != 13) {
+                    throw new IllegalArgumentException("Barcode '" + barcode + "' hat eine ungültige Länge (" + trimmed.length() + " Zeichen). Erlaubt sind nur 8 oder 13 Stellen!");
+                }
+            }
+        }
     }
 
     private ProductResponseDTO mapToResponseDTO(Product product) {
@@ -100,21 +125,14 @@ public class ProductService {
                 product.getName(),
                 product.getAnzeigename(),
                 product.getPrice(),
-                product.getPriceString(), // Nutzt deine vorhandene Methode in der Entity
+                product.getPriceString(),
                 product.getImagePath(),
                 new ProductResponseDTO.CategorySummaryDTO(
                         product.getCategory().getId(),
                         product.getCategory().getName()
                 ),
                 product.isActive(),
-                product.getBarcode()
+                product.getBarcodes()
         );
-    }
-
-    public ProductResponseDTO getProductByBarcode(String barcode) {
-        Product product = productRepository.findByBarcodeAndDeletedFalse(barcode)
-                .filter(p -> !p.isDeleted())
-                .orElseThrow(() -> new EntityNotFoundException("Kein produkt zum Barcode gefunden"));
-        return mapToResponseDTO(product);
     }
 }
