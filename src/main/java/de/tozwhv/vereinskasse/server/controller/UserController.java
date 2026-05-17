@@ -23,7 +23,6 @@ import java.util.Map;
 @RequiredArgsConstructor // Erzeugt den Konstruktor für Dependency Injection (Lombok)
 public class UserController {
 
-    private final UserRepository userRepository;
     private final UserService userService;
 
     // Alle Benutzer abrufen
