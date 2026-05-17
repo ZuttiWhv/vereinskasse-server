@@ -19,8 +19,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     public AuthResponse login(String username, String password) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials")); // Tipp: Generische Meldung erschwert Nutzer-Enumeration
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BadCredentialsException("Invalid credentials");
@@ -37,8 +37,13 @@ public class AuthService {
             throw new InvalidKeyException("Invalid refresh token");
         }
         String username = jwtProvider.getUsername(refreshToken);
-        String access = jwtProvider.generateAccessToken(username);
-        String refresh = jwtProvider.generateRefreshToken(username);
+
+
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
+                .orElseThrow(() -> new InvalidKeyException("User is inactive or deleted"));
+
+        String access = jwtProvider.generateAccessToken(user.getUsername());
+        String refresh = jwtProvider.generateRefreshToken(user.getUsername());
 
         return new AuthResponse(access, refresh);
     }

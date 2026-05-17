@@ -29,7 +29,6 @@ public class BarcodeAuthService {
 
     /**
      * Erstellt ein Limit: 10 Scan-Versuche pro Minute pro Terminal.
-     * Etwas großzügiger als beim Passwort, da Fehlscans vorkommen können.
      */
     private Bucket createNewBucket() {
         return Bucket.builder()
@@ -43,7 +42,6 @@ public class BarcodeAuthService {
      * Authentifiziert einen Benutzer anhand seines Barcodes/RFID-UIDs.
      */
     public AuthResponse verifyBarcodeAndGenerateToken(String barcode) {
-
 
         // 1. Identifikation des Terminals für das Rate-Limiting
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -64,8 +62,8 @@ public class BarcodeAuthService {
                     "Barcode-Login nur an autorisierten Terminals möglich.");
         }
 
-        // User anhand des Barcodes in der DB suchen
-        User user = userRepository.findByBarcodeAndIsLockedFalse(barcode)
+        // 3. User suchen
+        User user = userRepository.findByBarcodeAndIsLockedFalseAndActiveTrue(barcode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Ungültiger Barcode oder Benutzer nicht gefunden."));
 
