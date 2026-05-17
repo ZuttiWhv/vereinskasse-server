@@ -16,5 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByBarcodeAndIsLockedFalse(String barcode);
     Optional<User> findByBarcode(String barcode);
     List<User> findByOrgUnitIdIsNull();
+    Optional<User> findByUsernameAndActiveTrue(String username);
+    List<User> findAllByActiveTrue();
 }
 

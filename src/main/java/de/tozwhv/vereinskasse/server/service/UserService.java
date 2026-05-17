@@ -8,8 +8,7 @@ import de.tozwhv.vereinskasse.server.modell.Role;
 import de.tozwhv.vereinskasse.server.modell.User;
 import de.tozwhv.vereinskasse.server.repository.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,8 +52,9 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        // GEÄNDERT: Verwende findByUsernameAndActiveTrue, damit inaktive Archiv-User sich nicht anmelden können
+        User user = userRepository.findByUsernameAndActiveTrue(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found or inactive"));
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(), user.getPassword(), user.getAuthorities());
@@ -61,24 +62,22 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public void processDeposit(Long targetUserId, int amount, String adminUsername) {
-        // 1. Beteiligte laden
         User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Ziel-Benutzer nicht gefunden"));
 
-        User admin = userRepository.findByUsername(adminUsername)
-                .orElseThrow(() -> new RuntimeException("Admin nicht gefunden"));
+        // GEÄNDERT: Admins müssen ebenfalls aktiv sein, um Aktionen durchzuführen
+        User admin = userRepository.findByUsernameAndActiveTrue(adminUsername)
+                .orElseThrow(() -> new RuntimeException("Admin nicht gefunden oder inaktiv"));
 
-        // 2. Guthaben aktualisieren
         targetUser.setBalance(targetUser.getBalance() + amount);
         userRepository.save(targetUser);
 
-        // 3. Einzahlung protokollieren
         Deposit deposit = new Deposit();
         deposit.setUser(targetUser);
         deposit.setCreatedBy(admin);
         deposit.setAmount(amount);
 
-        depositRepository.save(deposit); // Du benötigst ein DepositRepository
+        depositRepository.save(deposit);
     }
 
     public User createUser(UserRequestDTO dto) {
@@ -89,25 +88,22 @@ public class UserService implements UserDetailsService {
         user.setBalance(dto.balance() != null ? dto.balance() : 0);
         user.setPin(dto.pin() != null ? passwordEncoder.encode(dto.pin()) : null);
         user.setPinEnabled(false);
+        user.setActive(true); // Explizit sicherstellen, dass neue User aktiv sind
 
-        // SETZEN DER ORG-UNIT
         if (dto.orgUnitId() != null) {
             user.setOrgUnit(organisationalUnitRepository.getReferenceById(dto.orgUnitId()));
         }
 
         user.setPasswordlessLoginEnabled(dto.passwordlessLoginEnabled() != null && dto.passwordlessLoginEnabled());
 
-        // Rollen-Mapping
         if (dto.roleIds() != null) {
             Set<Role> roles = new HashSet<>(roleRepository.findAllById(dto.roleIds()));
             user.setRoles(roles);
         }
 
-        // BILLING GROUP
         if (dto.billingGroupId() != null) {
             user.setBillingGroup(billingGroupRepository.getReferenceById(dto.billingGroupId()));
         }
-
 
         if (dto.Barcode() !=null){
             user.setBarcode(dto.Barcode());
@@ -122,8 +118,9 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public UserDTO updateSelf(String username, SelfUpdateRequestDTO dto) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+        // GEÄNDERT: Selbstverwaltung nur für aktive Accounts erlauben
+        User user = userRepository.findByUsernameAndActiveTrue(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden oder inaktiv"));
 
         if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(dto.newPassword()));
@@ -153,6 +150,7 @@ public class UserService implements UserDetailsService {
         String newBarcode;
         do {
             newBarcode = UUID.randomUUID().toString().substring(0, 10).toUpperCase();
+            // GEÄNDERT: Prüfung, ob der Barcode bei IRGENDEINEM (auch inaktiven) User existiert, um DB-Kollisionen zu vermeiden
         } while (userRepository.findByBarcode(newBarcode).isPresent());
         return newBarcode;
     }
@@ -165,13 +163,14 @@ public class UserService implements UserDetailsService {
         return convertToDTO(userRepository.save(user));
     }
 
-    public int generateBarcodeForAllUsers(){
+    public int generateBarcodeForAllUsers() {
         int counter = 0;
-        for (User user:userRepository.findAll()){
-            if (user.getBarcode() == null){
+        // GEÄNDERT: Barcodes nur für aktive User generieren, die noch keinen haben
+        for (User user : userRepository.findAllByActiveTrue()) {
+            if (user.getBarcode() == null) {
                 user.setBarcode(generateUniqueBarcode());
                 userRepository.save(user);
-                counter +=1;
+                counter += 1;
             }
         }
         return counter;
@@ -197,8 +196,6 @@ public class UserService implements UserDetailsService {
             if (!dto.pin().matches("\\d{4,6}")) {
                 throw new IllegalArgumentException("PIN muss aus 4 bis 6 Ziffern bestehen.");
             }
-
-            // PIN hashen (BCrypt nutzt den gleichen Encoder wie das Passwort)
             user.setPin(passwordEncoder.encode(dto.pin()));
             user.setPinEnabled(true);
         }
@@ -229,13 +226,8 @@ public class UserService implements UserDetailsService {
         return userRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
-
     }
-    /**
-     * Holt den aktuell authentifizierten User direkt aus der Datenbank.
-     * @return Der User-Entity
-     * @throws ResponseStatusException 401 falls nicht eingeloggt oder 404 falls User gelöscht
-     */
+
     public User getCurrentUser() {
         org.springframework.security.core.Authentication auth =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
@@ -245,34 +237,76 @@ public class UserService implements UserDetailsService {
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Nicht angemeldet");
         }
 
-        return userRepository.findByUsername(auth.getName())
+        // GEÄNDERT: Nutze findByUsernameAndActiveTrue, damit "gelöschte" Sessions sofort ungültig werden
+        return userRepository.findByUsernameAndActiveTrue(auth.getName())
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Benutzer nicht gefunden oder inaktiv"));
     }
 
     public UserDTO getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
+        // GEÄNDERT: Suche nach dem aktiven Benutzernamen
+        return userRepository.findByUsernameAndActiveTrue(username)
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
     }
 
     /**
-     * Holt alle User aus der DB und gibt sie als Liste von DTOs zurück.
+     * Holt alle aktiven User aus der DB und gibt sie als Liste von DTOs zurück.
      */
     public List<UserDTO> getAllUsers() {
-        return userRepository.findAll() // 1. Liste von User-Entities holen
-                .stream()               // 2. Stream öffnen
-                .map(this::convertToDTO)// 3. Jedes Element umwandeln
-                .toList();              // 4. Als Liste sammeln
+        // GEÄNDERT: findAllByActiveTrue() statt findAll(), damit Archiv-Leichen aus der UI (Kiosk & Admin-Listen) verschwinden
+        return userRepository.findAllByActiveTrue()
+                .stream()
+                .map(this::convertToDTO)
+                .toList();
     }
 
     /**
-     * Hilfsmethode für das Mapping (Entity -> DTO)
+     * NEU: Führt das "Soft-Delete" (Archivieren) eines Benutzers durch.
+     * Schützt historische Kassendaten und gibt den originalen Benutzernamen wieder frei.
      */
+    @Transactional
+    public void softDeleteUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden"));
+
+        if (!user.isActive()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Benutzer ist bereits archiviert");
+        }
+
+        long timestamp = System.currentTimeMillis() / 1000;
+
+        // 1. Eindeutigen Suffix anhängen, um den echten Benutzernamen freizugeben
+        user.setUsername(user.getUsername() + "_archived_" + timestamp);
+
+        // 2. Physische Barcodes & Logins entkoppeln, damit der Nachfolger sie nutzen kann
+        user.setBarcode(null);
+        user.setBarcodeLoginEnabled(false);
+        user.setPasswordlessLoginEnabled(false);
+        user.setPinEnabled(false);
+        user.setPin(null);
+
+        // 3. Aus der Kiosk-Struktur (Abteilungs-Ordner) entfernen
+        user.setOrgUnit(null);
+
+        // 4. Status-Flags kippen
+        user.setActive(false);
+        user.setDeletedAt(LocalDateTime.now());
+
+        userRepository.save(user);
+    }
+
     private UserDTO convertToDTO(User user) {
+        // Falls ein archivierter User (z.B. in alten Log-Einträgen) konvertiert wird,
+        // schneiden wir den Suffix für die Benutzeroberfläche wieder ab.
+        String displayUsername = user.getUsername();
+        if (!user.isActive() && displayUsername.contains("_archived_")) {
+            displayUsername = displayUsername.split("_archived_")[0] + " (Ehemalig)";
+        }
+
         return new UserDTO(
                 user.getId(),
-                user.getUsername(),
+                displayUsername, // Geänderten Anzeigenamen nutzen
                 user.isPinEnabled(),
                 user.getBalance(),
                 user.getRoles().stream()
@@ -289,5 +323,4 @@ public class UserService implements UserDetailsService {
                 user.isBarcodeLoginEnabled()
         );
     }
-
 }
