@@ -319,4 +319,15 @@ public class UserService implements UserDetailsService {
                 user.isBarcodeLoginEnabled()
         );
     }
+
+    /**
+     * Holt alle archivierten (gelöschten) Benutzer, deren Kasse NICHT auf 0 steht.
+     * Ermöglicht dem Admin das nachträgliche Ausgleichen von Altlasten.
+     */
+    public List<UserDTO> getArchivedUsersWithOpenBalance() {
+        return userRepository.findAll().stream() // Alle durchgehen (auch inaktive)
+                .filter(user -> !user.isActive() && user.getBalance() != 0)
+                .map(this::convertToDTO) // Nutzt automatisch das "(Ehemalig)" Namens-Mapping
+                .toList();
+    }
 }

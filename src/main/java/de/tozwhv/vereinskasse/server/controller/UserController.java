@@ -5,7 +5,6 @@ import de.tozwhv.vereinskasse.server.dto.user.UserDTO;
 import de.tozwhv.vereinskasse.server.dto.user.UserRequestDTO;
 import de.tozwhv.vereinskasse.server.modell.Deposit;
 import de.tozwhv.vereinskasse.server.modell.User;
-import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import de.tozwhv.vereinskasse.server.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -110,5 +109,11 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
             userService.softDeleteUser(id);
             return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/archived-open-balance")
+    @PreAuthorize("hasAuthority('READ_USER')")
+    public ResponseEntity<List<UserDTO>> getArchivedWithOpenBalance() {
+        return ResponseEntity.ok(userService.getArchivedUsersWithOpenBalance());
     }
 }
