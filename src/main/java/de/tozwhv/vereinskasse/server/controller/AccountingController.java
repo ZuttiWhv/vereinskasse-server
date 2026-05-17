@@ -42,7 +42,7 @@ public class AccountingController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             Authentication authentication) {
         // 1. Den User anhand des Namens aus dem Security-Kontext laden
-        User user = userRepository.findByUsername(authentication.getName())
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
         return transactionService.getUserHistory(user, start, end);
     }
