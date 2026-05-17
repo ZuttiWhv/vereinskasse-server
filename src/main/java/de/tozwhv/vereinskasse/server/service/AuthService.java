@@ -19,7 +19,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     public AuthResponse login(String username, String password) {
-        User user = userRepository.findByBarcodeAndIsLockedFalseAndActiveTrue(username)
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials")); // Tipp: Generische Meldung erschwert Nutzer-Enumeration
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
