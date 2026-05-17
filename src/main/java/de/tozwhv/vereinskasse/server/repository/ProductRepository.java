@@ -15,6 +15,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
         List<Product> findByCategoryIdAndDeletedFalse(Long categoryId);
 
-        Optional<Product> findByBarcodeAndDeletedFalse(String barcode);
+        Optional<Product> findByBarcodesContainingAndDeletedFalse(String barcode);
     }
 
