@@ -79,6 +79,7 @@ public class TransactionService {
 
         List<UserBalanceDTO> returnList = new ArrayList<>();
 
+        // WICHTIG: Wir nutzen weiterhin findAll(), um auch archivierte User zu prüfen
         userRepository.findAll().forEach(user -> {
             // 1. Daten laden
             List<Sale> sales = saleRepository.findByUserAndCreatedAtBetweenOrderByCreatedAtDesc(user, actualStart, actualEnd);
@@ -87,19 +88,31 @@ public class TransactionService {
             int allSales = sales.stream().map(Sale::getPrice).mapToInt(Integer::intValue).sum();
             int allDeposits = deposits.stream().map(Deposit::getAmount).mapToInt(Integer::intValue).sum();
 
-            // Vom aktuellen Kontostand zurück zu einem Wunschdatum =
+            // 2. Kontostand zum Wunschdatum berechnen
+            long balanceAtDate = user.getBalance() + allSales - allDeposits;
 
-            returnList.add(
-                    new UserBalanceDTO(user.getId(), user.getUsername(),
-                            user.getBalance() + allSales - allDeposits));
+            // 3. Filter-Logik für archivierte Benutzer:
+            // Ein aktiver User wird IMMER hinzugefügt.
+            // Ein inaktiver (archivierter) User wird NUR hinzugefügt, wenn sein Kontostand NICHT 0 ist.
+            if (user.isActive() || balanceAtDate != 0) {
 
+                // Optional: Name für die Liste hübsch machen, falls es ein archivierter User ist
+                String displayName = user.getUsername();
+                if (!user.isActive() && displayName.contains("_archived_")) {
+                    displayName = displayName.split("_archived_")[0] + " (Ehemalig)";
+                }
+
+                returnList.add(new UserBalanceDTO(
+                        user.getId(),
+                        displayName,
+                        balanceAtDate
+                ));
+            }
         });
 
-
-        // 4. Sortieren: Neueste zuerst
+        // 4. Sortieren: Alphabetisch nach Username
         returnList.sort(Comparator.comparing(UserBalanceDTO::username));
         return returnList;
     }
-
 
 }

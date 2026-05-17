@@ -25,8 +25,7 @@ public class VoucherService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final SaleRepository saleRepository;
-
-    // NEU: Nutzt jetzt den AccountingService statt den SaleService
+    private static final String ARCHIVED_MARKER = "_archived_";
     private final AccountingService accountingService;
 
     /**
@@ -82,13 +81,23 @@ public class VoucherService {
     @Transactional(readOnly = true)
     public List<PrepaidVoucherDTO> getAvailableVouchers() {
         return voucherRepository.findByRemainingQuantityGreaterThan(0).stream()
-                .map(v -> new PrepaidVoucherDTO(
-                        v.getProduct().getId(),
-                        v.getProduct().getAnzeigename() != null ? v.getProduct().getAnzeigename() : v.getProduct().getName(),
-                        v.getRemainingQuantity(),
-                        v.getGiver().getUsername(),
-                        v.getReason()
-                )).toList();
+                .map(v -> {
+                    // --- NEU: Schönen Anzeigenamen für den Giver ermitteln ---
+                    User giver = v.getGiver();
+                    String giverName = giver.getUsername();
+                    if (!giver.isActive() && giverName.contains(ARCHIVED_MARKER)) {
+                        giverName = giverName.split(ARCHIVED_MARKER)[0] + " (Ehemalig)";
+                    }
+                    // --------------------------------------------------------
+
+                    return new PrepaidVoucherDTO(
+                            v.getProduct().getId(),
+                            v.getProduct().getAnzeigename() != null ? v.getProduct().getAnzeigename() : v.getProduct().getName(),
+                            v.getRemainingQuantity(),
+                            giverName, // GEÄNDERT: Den bereinigten Namen übergeben
+                            v.getReason()
+                    );
+                }).toList();
     }
 
     /**
@@ -102,7 +111,7 @@ public class VoucherService {
         // 1. Daten für den Zeitraum laden
         List<PrepaidVoucher> allIssued = voucherRepository.findByCreatedAtBetween(start, end);
         List<Sale> allRedeemed = saleRepository.findByCreatedAtBetweenAndUseVoucherTrue(start, end);
-        List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAll(); // Lädt aktive UND archivierte User, was für die Historie korrekt ist!
 
         // 2. Statistiken pro Benutzer aggregieren
         return users.stream()
@@ -129,9 +138,16 @@ public class VoucherService {
                             .mapToLong(Sale::getAmount)
                             .sum();
 
+                    // --- NEU: Schönen Anzeigenamen für archivierte Konten ermitteln ---
+                    String displayName = user.getUsername();
+                    if (!user.isActive() && displayName.contains(ARCHIVED_MARKER)) {
+                        displayName = displayName.split(ARCHIVED_MARKER)[0] + " (Ehemalig)";
+                    }
+                    // -----------------------------------------------------------------
+
                     return new VoucherStatsDTO(
                             user.getId(),
-                            user.getUsername(),
+                            displayName, // GEÄNDERT: Hier den gesäuberten Namen übergeben
                             issuedVal,
                             redeemedVal,
                             issuedCount,
