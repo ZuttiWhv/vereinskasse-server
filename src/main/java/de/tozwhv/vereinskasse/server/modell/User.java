@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -30,7 +31,7 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(unique = true, nullable = false, length = 100) // Länge auf 100 erhöht für den "_archived_..." Suffix
     private String username;
 
     @Column(nullable = false)
@@ -42,7 +43,7 @@ public class User implements UserDetails {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean barcodeLoginEnabled;
 
-    @Column(unique = true) // Ein Barcode darf nur einmal im System existieren
+    @Column(unique = true) // Ein Barcode darf nur einmal im AKTIVEN System existieren
     private String barcode;
 
     private String pin;
@@ -50,6 +51,11 @@ public class User implements UserDetails {
     private boolean pinEnabled;
 
     private boolean isLocked;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean active = true;
+
+    private LocalDateTime deletedAt;
 
     private long balance;
 
@@ -87,7 +93,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return !isLocked;
+        return !isLocked && active; // Erweitert: Archivierte Accounts sind abgelaufen
     }
 
     @Override
@@ -97,13 +103,11 @@ public class User implements UserDetails {
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Passwort läuft nicht ab
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return !isLocked; // Account ist aktiv
+        return !isLocked && active;
     }
 }
-
-
