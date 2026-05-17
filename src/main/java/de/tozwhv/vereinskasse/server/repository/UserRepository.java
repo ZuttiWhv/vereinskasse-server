@@ -11,12 +11,11 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByUsername(String username);
     boolean existsByBillingGroup(BillingGroup billingGroup);
-    Optional<User> findByBarcodeAndIsLockedFalse(String barcode);
     Optional<User> findByBarcode(String barcode);
     List<User> findByOrgUnitIdIsNull();
-    Optional<User> findByUsernameAndActiveTrue(String username);
-    List<User> findAllByActiveTrue();
+    List<User> findAllByIsLockedFalseAndActiveTrue();
+    Optional<User> findByBarcodeAndIsLockedFalseAndActiveTrue(String barcode);
+    Optional<User> findByUsernameAndIsLockedFalseAndActiveTrue(String username);
 }
 

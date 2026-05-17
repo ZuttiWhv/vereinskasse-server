@@ -50,7 +50,8 @@ public class PasswordlessAuthService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TRUSTED_DEVICE"));
 
         if (!isTrustedDevice) return false;
-        User user = userRepository.findByUsername(username).orElse(null);
+
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username).orElse(null);
         if (user == null) return false;
 
         if (user.getRoles().stream().anyMatch(Role::isForcePasswordLogin)){
@@ -83,7 +84,7 @@ public class PasswordlessAuthService {
         }
 
         // 3. User laden und prüfen, ob Flag in DB gesetzt ist
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Benutzer nicht gefunden"));
 
         if (user.getRoles().stream().anyMatch(Role::isForcePasswordLogin)){

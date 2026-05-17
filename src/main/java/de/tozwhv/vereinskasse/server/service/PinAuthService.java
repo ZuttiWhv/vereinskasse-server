@@ -44,7 +44,7 @@ public class PinAuthService {
 
 
     public boolean isPinLoginPossible(String username) {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .map(u -> u.isPinEnabled() && appSettings.getSettingsInternal().isPinLogin())
                 .orElse(false);
     }
@@ -66,7 +66,7 @@ public class PinAuthService {
                     "Zu viele Fehlversuche für diesen Benutzer. Bitte warten Sie 5 Minuten.");
         }
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .orElseThrow(() -> new BadCredentialsException("Zugriff verweigert"));
 
         // 3. Status-Checks

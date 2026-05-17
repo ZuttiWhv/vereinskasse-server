@@ -35,6 +35,7 @@ public class UserService implements UserDetailsService {
     private final OrganisationalUnitRepository organisationalUnitRepository;
     private final PinAuthService pinAuthService;
     private final AppSettingsService appSettingsService;
+    private static final String ARCHIVED_MARKER = "_archived_";
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -52,8 +53,7 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        // GEÄNDERT: Verwende findByUsernameAndActiveTrue, damit inaktive Archiv-User sich nicht anmelden können
-        User user = userRepository.findByUsernameAndActiveTrue(username)
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found or inactive"));
 
         return new org.springframework.security.core.userdetails.User(
@@ -65,8 +65,7 @@ public class UserService implements UserDetailsService {
         User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Ziel-Benutzer nicht gefunden"));
 
-        // GEÄNDERT: Admins müssen ebenfalls aktiv sein, um Aktionen durchzuführen
-        User admin = userRepository.findByUsernameAndActiveTrue(adminUsername)
+        User admin = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(adminUsername)
                 .orElseThrow(() -> new RuntimeException("Admin nicht gefunden oder inaktiv"));
 
         targetUser.setBalance(targetUser.getBalance() + amount);
@@ -118,8 +117,7 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public UserDTO updateSelf(String username, SelfUpdateRequestDTO dto) {
-        // GEÄNDERT: Selbstverwaltung nur für aktive Accounts erlauben
-        User user = userRepository.findByUsernameAndActiveTrue(username)
+        User user = userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benutzer nicht gefunden oder inaktiv"));
 
         if (dto.newPassword() != null && !dto.newPassword().isBlank()) {
@@ -165,8 +163,7 @@ public class UserService implements UserDetailsService {
 
     public int generateBarcodeForAllUsers() {
         int counter = 0;
-        // GEÄNDERT: Barcodes nur für aktive User generieren, die noch keinen haben
-        for (User user : userRepository.findAllByActiveTrue()) {
+        for (User user : userRepository.findAllByIsLockedFalseAndActiveTrue()) {
             if (user.getBarcode() == null) {
                 user.setBarcode(generateUniqueBarcode());
                 userRepository.save(user);
@@ -237,15 +234,15 @@ public class UserService implements UserDetailsService {
                     org.springframework.http.HttpStatus.UNAUTHORIZED, "Nicht angemeldet");
         }
 
-        // GEÄNDERT: Nutze findByUsernameAndActiveTrue, damit "gelöschte" Sessions sofort ungültig werden
-        return userRepository.findByUsernameAndActiveTrue(auth.getName())
+
+        return userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(auth.getName())
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Benutzer nicht gefunden oder inaktiv"));
     }
 
     public UserDTO getUserByUsername(String username) {
         // GEÄNDERT: Suche nach dem aktiven Benutzernamen
-        return userRepository.findByUsernameAndActiveTrue(username)
+        return userRepository.findByUsernameAndIsLockedFalseAndActiveTrue(username)
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User nicht gefunden"));
     }
@@ -254,8 +251,7 @@ public class UserService implements UserDetailsService {
      * Holt alle aktiven User aus der DB und gibt sie als Liste von DTOs zurück.
      */
     public List<UserDTO> getAllUsers() {
-        // GEÄNDERT: findAllByActiveTrue() statt findAll(), damit Archiv-Leichen aus der UI (Kiosk & Admin-Listen) verschwinden
-        return userRepository.findAllByActiveTrue()
+        return userRepository.findAllByIsLockedFalseAndActiveTrue()
                 .stream()
                 .map(this::convertToDTO)
                 .toList();
@@ -277,7 +273,7 @@ public class UserService implements UserDetailsService {
         long timestamp = System.currentTimeMillis() / 1000;
 
         // 1. Eindeutigen Suffix anhängen, um den echten Benutzernamen freizugeben
-        user.setUsername(user.getUsername() + "_archived_" + timestamp);
+        user.setUsername(user.getUsername() + ARCHIVED_MARKER + timestamp);
 
         // 2. Physische Barcodes & Logins entkoppeln, damit der Nachfolger sie nutzen kann
         user.setBarcode(null);
@@ -300,8 +296,8 @@ public class UserService implements UserDetailsService {
         // Falls ein archivierter User (z.B. in alten Log-Einträgen) konvertiert wird,
         // schneiden wir den Suffix für die Benutzeroberfläche wieder ab.
         String displayUsername = user.getUsername();
-        if (!user.isActive() && displayUsername.contains("_archived_")) {
-            displayUsername = displayUsername.split("_archived_")[0] + " (Ehemalig)";
+        if (!user.isActive() && displayUsername.contains(ARCHIVED_MARKER)) {
+            displayUsername = displayUsername.split(ARCHIVED_MARKER)[0] + " (Ehemalig)";
         }
 
         return new UserDTO(
