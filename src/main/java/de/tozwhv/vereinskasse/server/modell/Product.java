@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "product")
 @Setter
@@ -52,8 +55,11 @@ public class Product {
     @Column(name = "deleted", nullable = false)
     private boolean deleted = false;
 
-    @Column(unique = true) // Ein Barcode darf nur einmal im System existieren
-    private String barcode;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "product_barcodes", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "barcode", unique = true) // Jeder Barcode darf systemweit nur 1x existieren!
+    private Set<String> barcodes = new HashSet<>();
 
 
     public String getPriceString() {
