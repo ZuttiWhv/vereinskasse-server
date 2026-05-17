@@ -41,7 +41,7 @@ public class OrganisationalUnitController {
     @GetMapping("/admin-tree")
     @PreAuthorize("hasAuthority('WRITE_OUS')")
     public ResponseEntity<List<OrgTreeResponseDTO>> getInternalOrgTree() {
-        return ResponseEntity.ok(orgUnitService.getFullOrgTree());
+        return ResponseEntity.ok(orgUnitService.getPureOrgTree());
     }
 
 

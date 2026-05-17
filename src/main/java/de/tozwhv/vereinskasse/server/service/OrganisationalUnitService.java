@@ -22,22 +22,41 @@ public class OrganisationalUnitService {
     private final AppSettingsService appSettingsService;
 
     /**
-     * Liefert den kompletten Baum aller Abteilungen und deren User.
-     * Berücksichtigt die Einstellung, ob User ohne OU flach oder gruppiert angezeigt werden.
+     * Liefert den Baum NUR mit echten Organisationseinheiten (für die Admin-Verwaltung).
+     */
+    @Transactional(readOnly = true)
+    public List<OrgTreeResponseDTO> getPureOrgTree() {
+        return buildOrgTree(false);
+    }
+
+    /**
+     * Liefert den kompletten Baum inklusive der OU-losen User (für das Login-Frontend).
      */
     @Transactional(readOnly = true)
     public List<OrgTreeResponseDTO> getFullOrgTree() {
+        return buildOrgTree(true);
+    }
+
+    /**
+     * Interne Kern-Methode zum Baumaufbau.
+     */
+    private List<OrgTreeResponseDTO> buildOrgTree(boolean includeVirtualUserNodes) {
         // 1. Echte Root-OUs laden
         List<OrganisationalUnit> rootUnits = orgUnitRepository.findByParentIsNull();
         List<OrgTreeResponseDTO> tree = new ArrayList<>(rootUnits.stream()
                 .map(this::convertToTreeResponse)
                 .toList());
 
+        // Wenn wir im Admin-Modus sind, überspringen wir die User-Zuweisung auf Root-Ebene
+        if (!includeVirtualUserNodes) {
+            return tree;
+        }
+
         // 2. Einstellung aus den AppSettings abrufen
         boolean showAsFlatUser = appSettingsService.getSettingsInternal().isShowUserWithoutOuAsUser();
 
         // 3. User ohne OU holen
-        List<User> unassignedUsers = userRepository.findByOrgUnitIdIsNull();
+        List<User> unassignedUsers = userRepository.findByOrgUnitIdIsNullAndIsLockedFalseAndActiveTrue();
 
         if (!unassignedUsers.isEmpty()) {
             if (showAsFlatUser) {
