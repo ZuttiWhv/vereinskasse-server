@@ -12,9 +12,8 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategoryId(Long categoryId);
         List<Product> findAllByDeletedFalse();
-
         List<Product> findByCategoryIdAndDeletedFalse(Long categoryId);
-
         Optional<Product> findByBarcodesContainingAndDeletedFalse(String barcode);
+        List<Product> findAllByBarcodesNotEmptyAndActiveIsTrueAndDeletedIsFalseOrderByAnzeigenameDesc();
     }
 
