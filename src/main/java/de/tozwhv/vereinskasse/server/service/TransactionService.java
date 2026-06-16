@@ -40,7 +40,7 @@ public class TransactionService {
 
         List<TransactionDTO> history = new ArrayList<>();
 
-        // 2. Sales konvertieren (Multipliziere Menge * Preis für totalPrice)
+        // 2. Sales konvertieren
 
 
         sales.forEach(s -> {
