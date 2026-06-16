@@ -32,47 +32,66 @@ public class PDFExportService {
         List<User> users = userRepository.findAll();
         users.removeIf(user -> user.getRoles().stream().anyMatch(Role::isForcePasswordLogin));
 
-        // 3 Spalten für Benutzer (Kompaktes Visitenkarten-Format)
-        return buildGridPdf("Mitglieder-Barcodes für Scanner-Login", 3, (table, writer) -> {
+        // ANGEPASST: Jetzt 2 Spalten für eine breitere, scansichere Darstellung
+        return buildGridPdf("Mitglieder-Barcodes für Scanner-Login", 2, (table, writer) -> {
+            int addedCellsCount = 0;
+
             for (User user : users) {
                 String code = user.getBarcode();
                 if (code != null && !code.trim().isEmpty()) {
                     table.addCell(createUserGridCell(writer, user, code));
+                    addedCellsCount++;
                 }
             }
-            padTable(table, users.size(), 3);
+
+            if (addedCellsCount == 0) {
+                PdfPCell noDataCell = new PdfPCell(new Phrase("Keine Mitglieder mit Barcodes gefunden.", CARD_TITLE_FONT));
+                noDataCell.setColspan(2); // Auf 2 Spalten angepasst
+                noDataCell.setBorder(Rectangle.NO_BORDER);
+                noDataCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                table.addCell(noDataCell);
+            } else {
+                padTable(table, addedCellsCount, 2); // Auf 2 Spalten angepasst
+            }
         });
     }
 
     public byte[] generateProductBarcodePdf() {
         List<Product> products = productRepository.findAllByBarcodesNotEmptyAndActiveIsTrueAndDeletedIsFalseOrderByAnzeigenameDesc();
 
-        // 2 Spalten für Produkte (Mehr Platz für das Produktbild)
+        // GEBLIEBEN: 2 Spalten für Produkte (Viel Platz für das Bild)
         return buildGridPdf("Produktübersicht", 2, (table, writer) -> {
+            int addedCellsCount = 0;
+
             for (Product product : products) {
                 String code = product.getBarcodes().stream().findFirst().orElse("");
                 if (!code.trim().isEmpty()) {
                     table.addCell(createProductGridCell(writer, product, code));
+                    addedCellsCount++;
                 }
             }
-            padTable(table, products.size(), 2);
+            padTable(table, addedCellsCount, 2); // Sicherer Zähler integriert
         });
     }
 
     /**
-     * Kompakter Produkt-Export (4 Spalten, ohne Bilder, eng zusammengerückt)
+     * Kompakter Produkt-Export (Jetzt 3 Spalten statt 4 für leichteres Treffen mit dem Scanner)
      */
     public byte[] generateProductBarcodeCompactPdf() {
         List<Product> products = productRepository.findAllByBarcodesNotEmptyAndActiveIsTrueAndDeletedIsFalseOrderByAnzeigenameDesc();
 
-        return buildGridPdf("Produktübersicht (Kompakt)", 4, (table, writer) -> {
+        // ANGEPASST: Von 4 auf 3 Spalten reduziert
+        return buildGridPdf("Produktübersicht (Kompakt)", 3, (table, writer) -> {
+            int addedCellsCount = 0;
+
             for (Product product : products) {
                 String code = product.getBarcodes().stream().findFirst().orElse("");
                 if (!code.trim().isEmpty()) {
                     table.addCell(createProductCompactGridCell(writer, product, code));
+                    addedCellsCount++;
                 }
             }
-            padTable(table, products.size(), 4);
+            padTable(table, addedCellsCount, 3); // Auf 3 Spalten angepasst & Sicherer Zähler integriert
         });
     }
 
@@ -109,26 +128,22 @@ public class PDFExportService {
     }
 
     /**
-     * Erstellt eine scan-sichere Kachel für ein Mitglied
+     * Erstellt eine scan-sichere Kachel für ein Mitglied (Zweispaltig-optimiert)
      */
     private PdfPCell createUserGridCell(PdfWriter writer, User user, String code) throws DocumentException {
         PdfPTable innerTable = new PdfPTable(1);
         innerTable.setWidthPercentage(100);
 
+        // Name zentriert belassen
         Paragraph namePara = new Paragraph(user.getUsername(), CARD_TITLE_FONT);
         namePara.setAlignment(Element.ALIGN_CENTER);
         PdfPCell nameCell = new PdfPCell(namePara);
         nameCell.setBorder(Rectangle.NO_BORDER);
         nameCell.setPaddingTop(8);
-        nameCell.setPaddingBottom(2);
+        nameCell.setPaddingBottom(6); // Etwas erhöht, da die ID-Zeile wegfällt
         innerTable.addCell(nameCell);
 
-        Paragraph codePara = new Paragraph("ID: " + code, CARD_SUB_FONT);
-        codePara.setAlignment(Element.ALIGN_CENTER);
-        PdfPCell codeCell = new PdfPCell(codePara);
-        codeCell.setBorder(Rectangle.NO_BORDER);
-        codeCell.setPaddingBottom(8);
-        innerTable.addCell(codeCell);
+        // GEÄNDERT: Die ID-Textzeile (codePara) wurde hier wunschgemäß entfernt.
 
         PdfPCell barcodeCell = createBarcodeCell(writer, code, false, 40f);
         barcodeCell.setBorder(Rectangle.NO_BORDER);
@@ -163,7 +178,7 @@ public class PDFExportService {
     }
 
     /**
-     * Erstellt eine kompakte Kachel (4-spaltig, ohne Bild, kleinere Schrift, weniger Padding)
+     * Erstellt eine kompakte Kachel (Jetzt 3-spaltig, ohne Bild)
      */
     private PdfPCell createProductCompactGridCell(PdfWriter writer, Product product, String code) throws DocumentException {
         PdfPTable innerTable = new PdfPTable(1);
@@ -177,6 +192,8 @@ public class PDFExportService {
         nameCell.setPaddingBottom(5);
         innerTable.addCell(nameCell);
 
+        // Durch das 3-Spalten-Layout haben die Barcodes jetzt automatisch mehr
+        // horizontale Fläche, was die Erkennungsrate drastisch verbessert.
         PdfPCell barcodeCell = createBarcodeCell(writer, code, true, 35f);
         barcodeCell.setBorder(Rectangle.NO_BORDER);
         innerTable.addCell(barcodeCell);
