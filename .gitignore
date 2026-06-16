@@ -42,3 +42,4 @@ out/
 /data/media/
 /src/main/resources/application-dev.properties
 /data/keystore.p12
+/data/
