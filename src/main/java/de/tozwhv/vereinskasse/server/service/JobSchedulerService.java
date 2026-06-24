@@ -75,4 +75,9 @@ public class JobSchedulerService {
         });
     }
 
+    public void executeJobDirectly(SystemJob job) {
+        // Starte den Job in einem eigenen Thread, damit der API-Aufruf sofort antwortet
+        new Thread(() -> executeJob(job)).start();
+    }
+
 }

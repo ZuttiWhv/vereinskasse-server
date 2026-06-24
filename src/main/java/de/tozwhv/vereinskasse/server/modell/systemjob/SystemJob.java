@@ -1,5 +1,7 @@
 package de.tozwhv.vereinskasse.server.modell.systemjob;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,6 +10,10 @@ import lombok.Setter;
 @Table(name = "system_jobs")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "job_type", discriminatorType = DiscriminatorType.STRING)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = ScheduledFeeJob.class, name = "SCHEDULED_FEE")
+})
 @Getter @Setter
 public abstract class SystemJob {
 
