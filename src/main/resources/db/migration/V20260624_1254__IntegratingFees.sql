@@ -4,7 +4,7 @@ CREATE TABLE fees (
                       user_id BIGINT NOT NULL,
                       amount INTEGER NOT NULL,
                       description VARCHAR(255) NOT NULL,
-                      fee_type VARCHAR(50) NOT NULL, -- Speichert den Namen des Enums als String
+                      fee_type VARCHAR(50) NOT NULL,
                       created_at TIMESTAMP NOT NULL,
 
     -- Foreign Key Constraint zur User-Tabelle
