@@ -55,7 +55,7 @@ public class JobSchedulerService {
 
     private void executeJob(SystemJob job) {
         if (job instanceof ScheduledFeeJob feeJob) {
-            executeScheduledFeeJob((ScheduledFeeJob) feeJob);
+            executeScheduledFeeJob(feeJob);
         }
     }
 
