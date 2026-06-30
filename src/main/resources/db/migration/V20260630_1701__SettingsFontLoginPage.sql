@@ -1,0 +1,1 @@
+ALTER TABLE app_settings ADD COLUMN fontsize_quick_login INT DEFAULT 24;
