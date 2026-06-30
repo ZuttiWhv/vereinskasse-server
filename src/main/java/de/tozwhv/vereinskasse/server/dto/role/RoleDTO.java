@@ -7,5 +7,6 @@ import java.util.List;
 public record RoleDTO(
         String name,
         boolean forcePasswordLogin,
-        List<PermissionIdDTO> permissions
+        List<PermissionIdDTO> permissions,
+        boolean feeExempt
 ) {}
