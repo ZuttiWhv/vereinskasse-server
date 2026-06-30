@@ -24,6 +24,7 @@ public class AppSettings {
     private boolean passwordlessLogin;
     private boolean allowBarcodeLogin;
     private boolean showUserWithoutOuAsUser;
+    private int fontsizeQuickLogin;
 
     // Standardwerte im Konstruktor
     public AppSettings() {
@@ -36,5 +37,6 @@ public class AppSettings {
         this.passwordlessLogin = false;
         this.allowBarcodeLogin = false;
         this.showUserWithoutOuAsUser = true;
+        this.fontsizeQuickLogin = 24;
     }
 }

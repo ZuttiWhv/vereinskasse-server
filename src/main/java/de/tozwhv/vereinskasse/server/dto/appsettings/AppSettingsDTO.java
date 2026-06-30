@@ -10,6 +10,7 @@ public record AppSettingsDTO(
         boolean pinLogin,
         boolean passwordlessLogin,
         boolean allowBarcodeLogin,
-        boolean showUserWithoutOuAsUser
+        boolean showUserWithoutOuAsUser,
+        int fontsizeQuickLogin
 ) {
 }

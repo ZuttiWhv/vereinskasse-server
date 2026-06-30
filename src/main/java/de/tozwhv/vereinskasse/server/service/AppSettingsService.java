@@ -50,6 +50,7 @@ public class AppSettingsService {
         s.setPasswordlessLogin(dto.passwordlessLogin());
         s.setAllowBarcodeLogin(dto.allowBarcodeLogin());
         s.setShowUserWithoutOuAsUser(dto.showUserWithoutOuAsUser());
+        s.setFontsizeQuickLogin(dto.fontsizeQuickLogin());
 
         // Speichern
         AppSettings updated = settingsRepository.save(s);
@@ -71,7 +72,8 @@ public class AppSettingsService {
                 s.isPinLogin(),
                 s.isPasswordlessLogin(),
                 s.isAllowBarcodeLogin(),
-                s.isShowUserWithoutOuAsUser()
+                s.isShowUserWithoutOuAsUser(),
+                s.getFontsizeQuickLogin()
         );
     }
 }
