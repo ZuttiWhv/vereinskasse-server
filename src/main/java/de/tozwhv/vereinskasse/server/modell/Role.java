@@ -32,5 +32,5 @@ public class Role {
             inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
     private Set<Permission> permissions = new HashSet<>();
-
+    private boolean feeExempt = false;
 }

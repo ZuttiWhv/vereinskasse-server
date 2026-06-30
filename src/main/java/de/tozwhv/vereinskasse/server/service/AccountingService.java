@@ -16,7 +16,7 @@ public class AccountingService {
 
     private final UserRepository userRepository;
     private final SaleRepository saleRepository;
-    private final FeeRepository feeRepository; // Neu hinzugefügt
+    private final FeeRepository feeRepository;
 
     /**
      * Bucht eine Gebühr (automatisch oder manuell).
@@ -24,17 +24,25 @@ public class AccountingService {
      */
     @Transactional
     public Fee bookFee(User user, int amount, TransactionType type, String description) {
-        user.setBalance(user.getBalance() - amount);
-        userRepository.save(user);
+        boolean hasChargeableRole = user.getRoles().stream()
+                .anyMatch(role -> !role.isFeeExempt());
 
-        // Fee-Eintrag erstellen
-        Fee fee = new Fee();
-        fee.setUser(user);
-        fee.setAmount(amount);
-        fee.setFeeType(type);
-        fee.setDescription(description);
+        if (!hasChargeableRole) {
+            return null;
+        }
 
-        return feeRepository.save(fee);
+            user.setBalance(user.getBalance() - amount);
+            userRepository.save(user);
+
+            // Fee-Eintrag erstellen
+            Fee fee = new Fee();
+            fee.setUser(user);
+            fee.setAmount(amount);
+            fee.setFeeType(type);
+            fee.setDescription(description);
+
+            return feeRepository.save(fee);
+
     }
 
 

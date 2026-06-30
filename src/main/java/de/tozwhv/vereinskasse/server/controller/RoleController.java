@@ -62,7 +62,7 @@ public class RoleController {
     private void mapDtoToEntity(RoleDTO dto, Role role) {
         role.setName(dto.name());
         role.setForcePasswordLogin(dto.forcePasswordLogin());
-
+        role.setFeeExempt(dto.feeExempt());
         // Berechtigungen mappen
         if (dto.permissions() != null) {
             Set<Permission> permissions = dto.permissions().stream()
