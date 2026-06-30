@@ -1,8 +1,7 @@
 package de.tozwhv.vereinskasse.server.service;
 
-import de.tozwhv.vereinskasse.server.modell.Product;
-import de.tozwhv.vereinskasse.server.modell.Sale;
-import de.tozwhv.vereinskasse.server.modell.User;
+import de.tozwhv.vereinskasse.server.modell.*;
+import de.tozwhv.vereinskasse.server.repository.FeeRepository;
 import de.tozwhv.vereinskasse.server.repository.SaleRepository;
 import de.tozwhv.vereinskasse.server.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +16,27 @@ public class AccountingService {
 
     private final UserRepository userRepository;
     private final SaleRepository saleRepository;
+    private final FeeRepository feeRepository; // Neu hinzugefügt
+
+    /**
+     * Bucht eine Gebühr (automatisch oder manuell).
+     * Diese Methode ist der zentrale Punkt für alle 'Fee'-Transaktionen.
+     */
+    @Transactional
+    public Fee bookFee(User user, int amount, TransactionType type, String description) {
+        user.setBalance(user.getBalance() - amount);
+        userRepository.save(user);
+
+        // Fee-Eintrag erstellen
+        Fee fee = new Fee();
+        fee.setUser(user);
+        fee.setAmount(amount);
+        fee.setFeeType(type);
+        fee.setDescription(description);
+
+        return feeRepository.save(fee);
+    }
+
 
     /**
      * Bucht einen regulären Verkauf vom Guthaben ab.
