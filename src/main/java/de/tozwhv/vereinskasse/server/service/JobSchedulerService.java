@@ -61,7 +61,7 @@ public class JobSchedulerService {
 
     private void executeScheduledFeeJob (ScheduledFeeJob feeJob) {
         log.info("Führe monatliche Gebührenbuchung aus: Job {}", feeJob.getId());
-        userRepository.findAll().forEach(user -> {
+        userRepository.findAllByActiveTrue().forEach(user -> {
             try {
                 accountingService.bookFee(
                         user,
